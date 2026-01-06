@@ -1,3 +1,1903 @@
+Gemini
+
+Build a Free Macro Tracker Webpage
+WORK
+
+New chat
+My Stuff
+Image of 
+Image of 
+Image of 
+Gems
+
+Coding partner
+Chats
+Build a Free Macro Tracker Webpage
+Create an outline picture of us for a logo
+Tufted Titmouse Identification and Facts
+Protein Powder Flavor Recommendations
+Recipe Fiber Content Analysis
+Show me what I’d look like 120 lbs lighter. I’m currently 360
+Weight Loss for Skydiving Goal
+Recipe Macro Calculation Per Serving
+Calorie Burn Estimate For Walking
+Recipe Transcription and Formatting
+Recipe Making Collaboration and Setup
+Taylor Odlozil Public Information
+Carolina Chickadee Identification in Texas
+Sharpen this photo
+Create a finished product photo for the following recipe: Honey-Lime Grilled Chicken Developed by Cook Anything Kitchen dinner • Mexican Fusion This recipe is all about the glaze. By simmering the honey-lime marinade into a thick syrup before basting, you achieve a beautiful charred lacquer on the chicken that is both tangy and sweet. Using chicken thighs ensures the meat stays juicy even over the high heat of the grill. Recommended Tools As an Amazon Affiliate I earn from qualifying purchases. Outdoor Grill or Cast Iron Grill Pan Small Saucepan (For reducing the marinade into a syrup) Silicone Basting Brush (To apply the sticky glaze) Instant Read Thermometer Ingredients 3 pounds boneless skinless chicken thighs (trimmed of excess fat) The Marinade & Glaze 2 tablespoons extra virgin olive oil 3 tablespoons honey ¼ cup fresh lime juice 1 teaspoon finely grated fresh ginger 1 teaspoon ground cumin 1 teaspoon ground coriander 1 teaspoon dried oregano 3 medium cloves garlic, finely minced 1 teaspoon kosher salt Directions Mix Marinade: Combine all marinade ingredients in a small saucepan and stir well until the honey is fully incorporated. Marinate: Transfer 3 tablespoons of the mixture to a large zippered bag. Add the chicken thighs, seal, and massage well to coat. Marinate in the refrigerator for at least 30 minutes, or up to 12 hours. Reduce the Glaze: Heat the remaining marinade in the saucepan over medium heat. Bring to a boil and cook until syrupy and reduced by half (about 1–2 minutes). Watch carefully so it doesn't boil over. Set aside to cool. Grill (Option 1): Preheat an outdoor grill to medium-high. Add chicken and sprinkle lightly with extra salt and pepper. Cook for 12–15 minutes, turning frequently and basting generously with the reduced glaze during the last 5 minutes. Sauté (Option 2): Heat oil in a large skillet until almost smoking. Add chicken in batches (don't overcrowd). Cook for about 10 minutes, turning frequently and brushing with the glaze until charred in places and cooked through. Rest: Transfer chicken to a platter, tent loosely with foil, and allow to rest for 5 minutes before serving. This allows the juices to redistribute. Notes Temperature Tip: While the original recipe suggests 160°F, chicken thighs are actually more tender when cooked to 175°F (80°C), as the dark meat connective tissue breaks down better at higher temperatures. Ginger: For the best flavor, use a Microplane to grate fresh ginger. If you're out of fresh, you can substitute with ¼ tsp ground ginger. Glazing: Because of the honey content, the glaze can burn if applied too early. Save the heavy basting for the final few minutes of cooking.
+HTML Cleanup and Structure Checklist
+Restore this old photo
+
+Settings & help
+Conversation with Gemini
+My log sheet and food sheet are completely separate. I will need to have separate scripts
+
+You actually do not need two separate scripts! In fact, having two separate scripts makes the website code much harder to manage because you would have to juggle two different web URLs.
+
+Think of the Google Apps Script not as "part of the sheet," but as a Bridge (or a Traffic Cop). It can stand in the middle and talk to as many different sheets as you want, as long as it has their ID numbers.
+
+Here is how the architecture works:
+
+The Strategy
+We will put the script inside your Log Sheet (the one with the Forrest/Christine tabs). We will teach that script to:
+
+Look internally to save your weight/macros (doPost).
+
+Reach out externally to the separate Food Sheet to read the menu (doGet).
+
+Step 1: Get Your IDs
+Open a text editor (like Notepad) and paste these two URLs so you have them ready:
+
+Food Sheet ID: Open your Food Database sheet. Copy the long string of random characters between /d/ and /edit in the URL bar.
+
+Log Sheet ID: Open your Log sheet. Copy that ID as well.
+
+Step 2: The "Bridge" Script
+Go to Extensions > Apps Script inside your Log Sheet (it's better to host it there). Delete any existing code and paste this.
+
+Crucial: You must paste your specific IDs in the top two lines.
+
+JavaScript
+// ==========================================
+// CONFIGURATION AREA
+// ==========================================
+
+// 1. The ID of the sheet where you SAVE data (The one you are in right now)
+var LOG_SHEET_ID = "PASTE_YOUR_LOG_SHEET_ID_HERE"; 
+
+// 2. The ID of the SEPARATE sheet that has the Food Data (Headers A-H)
+var FOOD_SHEET_ID = "PASTE_YOUR_FOOD_SHEET_ID_HERE"; 
+
+// ==========================================
+
+function doGet(e) {
+  // CONNECT TO THE SEPARATE FOOD FILE
+  // This opens the external file using the ID you provided above
+  var externalDoc = SpreadsheetApp.openById(FOOD_SHEET_ID);
+  
+  // We assume food data is on the first tab. 
+  // If not, use .getSheetByName("TabName")
+  var sheet = externalDoc.getSheets()[0]; 
+  
+  var data = sheet.getDataRange().getValues();
+  data.shift(); // Remove headers
+  
+  // Map columns A-H from the external sheet
+  var foods = data.map(function(row) {
+    return {
+      category: row[0], 
+      name:     row[1], 
+      serve:    row[2], 
+      cal:      row[3], 
+      pro:      row[4], 
+      carb:     row[5], 
+      fat:      row[6], 
+      fiber:    row[7]  
+    };
+  });
+  
+  return ContentService.createTextOutput(JSON.stringify(foods))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    // CONNECT TO THE LOG FILE (The one this script is inside)
+    var doc = SpreadsheetApp.openById(LOG_SHEET_ID);
+    
+    // Find the tab for "Forrest" or "Christine"
+    var sheet = doc.getSheetByName(e.parameter.user); 
+    
+    var newRow = [
+      new Date(),           // Timestamp
+      e.parameter.weight,
+      e.parameter.calories,
+      e.parameter.protein,
+      e.parameter.carbs,
+      e.parameter.fat,
+      e.parameter.fiber
+    ];
+
+    sheet.appendRow(newRow);
+    
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'success' })).setMimeType(ContentService.MimeType.JSON);
+  }
+  catch (e) {
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': e.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+  finally { lock.releaseLock(); }
+}
+Step 3: Permissions & Deploy
+Since this script now accesses two different files, Google will ask you for broader permissions when you deploy.
+
+Click Deploy > Manage Deployments.
+
+Click Edit (pencil).
+
+Select New Version (Mandatory!).
+
+Click Deploy.
+
+Authorize Access: It will pop up asking for permission. It will likely say "This app needs access to your Google Sheets."
+
+Note: It might warn you the app is "unsafe" (because you wrote it). Click Advanced > Go to (Script Name) (unsafe) to proceed.
+
+Step 4: Frontend Update
+You do not need to change your HTML code structure. You just need to ensure the scriptURL in your HTML matches this new deployment URL.
+
+Since the one script handles both tasks, your website sends a "GET" request to that URL to get the food (from Sheet A) and a "POST" request to that same URL to save the logs (to Sheet B).
+
+Can we just remove all iframe references and you can pull data from the log sheet as well?
+
+Yes, we can definitely do that. It is actually a much cleaner solution. Instead of embedding a clunky window (iframe) that forces you to load the whole Google Sheets interface, we will just fetch the raw history data and build a nice, clean HTML table right on the page.
+
+To make this work, we need to teach the script to handle two different "GET" requests:
+
+"Give me the Food List" (for the calculator).
+
+"Give me the History Log" (for the table at the bottom).
+
+We will add a parameter called action to the URL to tell the script which data we want.
+
+Step 1: The "Traffic Cop" Script (Backend)
+Update your Google Apps Script to this. It now checks e.parameter.action to decide which sheet to read.
+
+JavaScript
+// --- CONFIGURATION ---
+var LOG_SHEET_ID = "PASTE_LOG_SHEET_ID_HERE"; 
+var FOOD_SHEET_ID = "PASTE_FOOD_SHEET_ID_HERE"; 
+// ---------------------
+
+function doGet(e) {
+  var action = e.parameter.action;
+  
+  // CASE 1: Fetch History Logs
+  if (action === "getHistory") {
+    var doc = SpreadsheetApp.openById(LOG_SHEET_ID);
+    // Determine which user's history to grab. Default to "Forrest" if none specified.
+    var userName = e.parameter.user || "Forrest"; 
+    var sheet = doc.getSheetByName(userName);
+    
+    // Get last 10 rows (so we don't load thousands of entries)
+    var lastRow = sheet.getLastRow();
+    var startRow = Math.max(1, lastRow - 9); // Start 9 rows back from the end
+    var data = sheet.getRange(startRow, 1, 10, 7).getValues(); // Get 7 columns
+    
+    // Reverse the array so the newest entries are at the top
+    return ContentService.createTextOutput(JSON.stringify(data.reverse()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // CASE 2: Fetch Food Data (Default)
+  else {
+    var doc = SpreadsheetApp.openById(FOOD_SHEET_ID);
+    var sheet = doc.getSheets()[0]; 
+    var data = sheet.getDataRange().getValues();
+    data.shift(); // Remove headers
+    
+    var foods = data.map(function(row) {
+      return {
+        category: row[0], 
+        name:     row[1], 
+        serve:    row[2], 
+        cal:      row[3], 
+        pro:      row[4], 
+        carb:     row[5], 
+        fat:      row[6], 
+        fiber:    row[7]  
+      };
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify(foods))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  // (This part stays exactly the same as before)
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var doc = SpreadsheetApp.openById(LOG_SHEET_ID);
+    var sheet = doc.getSheetByName(e.parameter.user); 
+    
+    var newRow = [
+      new Date(),
+      e.parameter.weight,
+      e.parameter.calories,
+      e.parameter.protein,
+      e.parameter.carbs,
+      e.parameter.fat,
+      e.parameter.fiber
+    ];
+
+    sheet.appendRow(newRow);
+    
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'success' })).setMimeType(ContentService.MimeType.JSON);
+  }
+  catch (e) {
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': e.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+  finally { lock.releaseLock(); }
+}
+REMINDER: Deploy a New Version after saving this code.
+
+Step 2: The Logic (Frontend)
+Here is the updated HTML. I removed the iframe entirely.
+
+New Feature: When you change the "User" dropdown (Forrest/Christine), the history table automatically updates to show that person's logs.
+
+Clean Date: The script formats the timestamp to be readable (e.g., "Jan 06").
+
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+    /* GLOBAL TABLE STYLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+    
+    /* Specific alignments */
+    .text-left { text-align: left; }
+    .text-bold { font-weight: bold; }
+
+    /* Inputs & Layout */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+    
+    /* Buttons */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.8; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+    /* Totals Row */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+
+    /* Log Grid */
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h3>Meal Calculator</h3>
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <h3>Log Daily Entry</h3>
+  <form id="macroForm">
+    <div style="margin-bottom: 10px;">
+        <label>User: </label>
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+            <option value="Forrest">Forrest</option>
+            <option value="Christine">Christine</option>
+        </select>
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; height: 20px;"></p>
+
+  <h3>History (Last 10 Entries)</h3>
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Wt</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody">
+      <tr><td colspan="7">Loading history...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'YOUR_WEB_APP_URL_HERE'; // Update this!
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData(); // Get the foods for the calculator
+        loadHistory();  // Get the logs for the history table
+    };
+
+    // --- 1. DATA LOADING FUNCTIONS ---
+
+    function loadFoodData() {
+        // Standard GET request (no action param needed, defaults to foods)
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        })
+        .catch(err => console.error("Error loading foods:", err));
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+        historyBody.innerHTML = '<tr><td colspan="7" style="color:#777;">Refreshing...</td></tr>';
+
+        // Fetch with ?action=getHistory&user=NAME
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; // Clear loading message
+            
+            if (data.length === 0) {
+                 historyBody.innerHTML = '<tr><td colspan="7">No logs found.</td></tr>';
+                 return;
+            }
+
+            data.forEach(row => {
+                // Parse Date (Row[0])
+                let dateStr = "";
+                try {
+                    const dateObj = new Date(row[0]);
+                    // Format: Jan 6
+                    dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
+                } catch(e) { dateStr = "Date Err"; }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1] || "-"}</td>
+                    <td>${row[2]}</td>
+                    <td>${row[3]}</td>
+                    <td>${row[4]}</td>
+                    <td>${row[5]}</td>
+                    <td>${row[6]}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            historyBody.innerHTML = '<tr><td colspan="7" style="color:red;">Error loading history.</td></tr>';
+        });
+    }
+
+    // --- 2. CALCULATOR FUNCTIONS ---
+
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name} (${food.serve})</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="0" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td>
+            <td class="r-pro">0</td>
+            <td class="r-carb">0</td>
+            <td class="r-fat">0</td>
+            <td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">X</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) {
+        btn.closest('tr').remove();
+        calcTotals();
+    }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            const servingSize = parseFloat(food.serve) || 1; 
+            const ratio = qty / servingSize; 
+
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * ratio);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * ratio);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * ratio);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * ratio);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * ratio);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    // --- 3. SUBMIT LOGIC ---
+
+    const form = document.getElementById('macroForm');
+    const statusMsg = document.getElementById('status');
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      statusMsg.innerText = "Saving...";
+      statusMsg.style.color = "blue";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+        .then(response => {
+            statusMsg.innerText = "✅ Saved successfully!";
+            statusMsg.style.color = "green";
+            form.reset(); // Clear inputs
+            
+            // Wait 1 second then reload history so the new entry shows up
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(error => {
+            statusMsg.innerText = "❌ Error saving.";
+            statusMsg.style.color = "red";
+        });
+    });
+  </script>
+
+</body>
+</html>
+Can we reverse the table where the most recent dates are on the bottom?
+
+To reverse the table so the most recent dates are at the bottom (like a traditional log), we just need to remove the .reverse() command in the script.
+
+Currently, the script grabs the last 10 rows and flips them so the newest is at the top. If we delete that flip, they will stay in their natural order (oldest -> newest).
+
+1. Update the Backend Script (Code.gs)
+Find the doGet section in your Google Apps Script. Look for the line that says data.reverse().
+
+Change this:
+
+JavaScript
+// OLD WAY (Newest at Top)
+return ContentService.createTextOutput(JSON.stringify(data.reverse()))
+  .setMimeType(ContentService.MimeType.JSON);
+To this (Newest at Bottom):
+
+JavaScript
+// NEW WAY (Oldest -> Newest at Bottom)
+return ContentService.createTextOutput(JSON.stringify(data))
+  .setMimeType(ContentService.MimeType.JSON);
+(Don't forget to Deploy > New Version after saving!)
+
+2. (Optional) Auto-Scroll to Bottom
+If you prefer the newest entry to be at the bottom, you might want the page to automatically scroll down to the bottom of the history table so you don't have to scroll manually every time.
+
+In your HTML, you can add this small line inside the loadHistory() function, right after the loop that creates the rows:
+
+JavaScript
+// ... inside loadHistory() ...
+
+data.forEach(row => {
+    // (Existing row creation code...)
+    historyBody.appendChild(tr);
+});
+
+// ADD THIS: Scroll the table into view
+document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+Let's fix the food source page.
+
+
+
+Headers are as followed:
+
+
+
+CategoryFood ItemCalories (kcal)Protein (g)Carbs (g)Fat (g)Fiber (g)
+
+It looks like you have removed the "Serving Size" column. This actually simplifies the code, but it changes how we calculate the totals.
+
+The New Logic: Since there is no "Serving Size" column to divide by, the calculator will now assume the data in your sheet represents 1 Unit (or 1 Serving).
+
+Example: If your sheet says "Chicken Breast: 140 Calories", and you type 1.5 in the calculator, it will calculate 1.5 * 140.
+
+Here is the updated code for both the Script and the HTML.
+
+Part 1: Update the Backend Script (Code.gs)
+I have re-mapped the columns to match your new 7-column layout (A–G).
+
+JavaScript
+// --- CONFIGURATION ---
+var LOG_SHEET_ID = "PASTE_LOG_SHEET_ID_HERE"; 
+var FOOD_SHEET_ID = "PASTE_FOOD_SHEET_ID_HERE"; 
+// ---------------------
+
+function doGet(e) {
+  var action = e.parameter.action;
+  
+  // 1. FETCH HISTORY (For the bottom table)
+  if (action === "getHistory") {
+    var doc = SpreadsheetApp.openById(LOG_SHEET_ID);
+    var userName = e.parameter.user || "Forrest"; 
+    var sheet = doc.getSheetByName(userName);
+    
+    // Get last 10 rows
+    var lastRow = sheet.getLastRow();
+    var startRow = Math.max(1, lastRow - 9); 
+    var data = sheet.getRange(startRow, 1, 10, 7).getValues(); 
+    
+    // Return data (Oldest -> Newest)
+    return ContentService.createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // 2. FETCH FOOD DATA (For the calculator)
+  else {
+    var doc = SpreadsheetApp.openById(FOOD_SHEET_ID);
+    var sheet = doc.getSheets()[0]; 
+    var data = sheet.getDataRange().getValues();
+    data.shift(); // Remove headers
+    
+    // NEW MAPPING based on 7 columns (A-G)
+    var foods = data.map(function(row) {
+      return {
+        category: row[0], // Col A
+        name:     row[1], // Col B
+        // Note: No serving size column anymore
+        cal:      row[2], // Col C
+        pro:      row[3], // Col D
+        carb:     row[4], // Col E
+        fat:      row[5], // Col F
+        fiber:    row[6]  // Col G
+      };
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify(foods))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  // (Standard saving logic)
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var doc = SpreadsheetApp.openById(LOG_SHEET_ID);
+    var sheet = doc.getSheetByName(e.parameter.user); 
+    
+    var newRow = [
+      new Date(),
+      e.parameter.weight,
+      e.parameter.calories,
+      e.parameter.protein,
+      e.parameter.carbs,
+      e.parameter.fat,
+      e.parameter.fiber
+    ];
+
+    sheet.appendRow(newRow);
+    
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'success' })).setMimeType(ContentService.MimeType.JSON);
+  }
+  catch (e) {
+    return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': e.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+  finally { lock.releaseLock(); }
+}
+REMINDER: Click Deploy > New Version after pasting this!
+
+Part 2: Update the Frontend (HTML)
+I have simplified the calcRow function. It now just multiplies Quantity * Macro.
+
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+    .text-left { text-align: left; }
+
+    /* INPUTS */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+    
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+    /* TOTALS & LOG GRID */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h3>Meal Calculator</h3>
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty (Servings)</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <h3>Log Daily Entry</h3>
+  <form id="macroForm">
+    <div style="margin-bottom: 10px;">
+        <label>User: </label>
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+            <option value="Forrest">Forrest</option>
+            <option value="Christine">Christine</option>
+        </select>
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+
+  <h3>History</h3>
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Wt</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'YOUR_WEB_APP_URL_HERE'; // PASTE YOUR URL
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    // 1. DATA LOADING
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            // Sort by Category (Column A)
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            // Reverse removed, now shows Oldest -> Newest (Bottom)
+            data.forEach(row => {
+                let dateStr = "";
+                try {
+                   dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
+                } catch(e) {}
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${dateStr}</td><td>${row[1]||"-"}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[6]}</td>`;
+                historyBody.appendChild(tr);
+            });
+            // Auto-scroll to bottom
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // 2. CALCULATOR
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            // Removed (${food.serve}) from label since it doesn't exist anymore
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            // NEW MATH: Simple Multiplication
+            // It assumes the sheet data is for "1 serving"
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    // 3. SUBMIT
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+  </script>
+</body>
+</html>
+So I have conditional formatting where when calories, protein, carbs, fat, and fiber are out of their ranges, they light up red, green or yellow.
+
+This is a great addition. Visual feedback makes the data much easier to read at a glance.
+
+Since the webpage is building the table (not Google Sheets), the webpage needs to know what your "Ranges" are to apply the colors.
+
+We will add a simple "Target Configuration" section to your JavaScript where you can define the goals for you and your wife separately.
+
+Step 1: Add the Colors (CSS)
+Add these classes to your <style> section. I chose pastel colors so the black text remains readable.
+
+CSS
+/* CONDITIONAL FORMATTING COLORS */
+.stat-green { background-color: #c8e6c9; color: #2e7d32; } /* Success */
+.stat-yellow { background-color: #fff9c4; color: #f9a825; } /* Close/Warning */
+.stat-red { background-color: #ffcdd2; color: #c62828; }    /* Off Track */
+Step 2: Define Your Targets & Logic (JavaScript)
+We need to update the loadHistory() function to look at the numbers and decide which color to pick.
+
+How to configure this: In the code below, look for const TARGETS. I have put in dummy numbers. You will need to update these numbers to match your actual goals.
+
+Min/Max: The range where you want it to turn GREEN.
+
+Logic:
+
+Green: Inside the range.
+
+Yellow: Close (within 10% of the range).
+
+Red: Way off.
+
+Replace your existing loadHistory() function (and the top of your script) with this updated version:
+
+JavaScript
+// --- CONFIGURATION ---
+const scriptURL = 'YOUR_WEB_APP_URL_HERE'; 
+
+// === 1. DEFINE YOUR RANGES HERE ===
+const TARGETS = {
+    "Forrest": {
+        calories: { min: 2000, max: 2200 },
+        protein:  { min: 180,  max: 200 },
+        carbs:    { min: 150,  max: 200 },
+        fat:      { min: 60,   max: 80 },
+        fiber:    { min: 30,   max: 50 }
+    },
+    "Christine": {
+        calories: { min: 1500, max: 1700 },
+        protein:  { min: 120,  max: 140 },
+        carbs:    { min: 100,  max: 150 },
+        fat:      { min: 40,   max: 60 },
+        fiber:    { min: 20,   max: 30 }
+    }
+};
+
+let foodDatabase = [];
+
+window.onload = function() {
+    loadFoodData();
+    loadHistory();
+};
+
+// ... (loadFoodData function stays the same) ...
+
+function loadHistory() {
+    const user = document.getElementById('userSelect').value;
+    const historyBody = document.getElementById('historyBody');
+    const goals = TARGETS[user]; // Load specific goals for selected user
+
+    historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+    fetch(`${scriptURL}?action=getHistory&user=${user}`)
+    .then(res => res.json())
+    .then(data => {
+        historyBody.innerHTML = ""; 
+        
+        if (data.length === 0) {
+             historyBody.innerHTML = '<tr><td colspan="7">No logs found.</td></tr>';
+             return;
+        }
+
+        data.forEach(row => {
+            // Parse the date
+            let dateStr = "";
+            try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } 
+            catch(e) {}
+
+            // Extract Values (ensure they are numbers)
+            const weight = row[1];
+            const cal = parseFloat(row[2]) || 0;
+            const pro = parseFloat(row[3]) || 0;
+            const carb = parseFloat(row[4]) || 0;
+            const fat = parseFloat(row[5]) || 0;
+            const fib = parseFloat(row[6]) || 0;
+
+            const tr = document.createElement('tr');
+            
+            // Build the row with color checking
+            tr.innerHTML = `
+                <td>${dateStr}</td>
+                <td>${weight || "-"}</td>
+                <td class="${getColor(cal, goals.calories)}">${cal}</td>
+                <td class="${getColor(pro, goals.protein)}">${pro}</td>
+                <td class="${getColor(carb, goals.carbs)}">${carb}</td>
+                <td class="${getColor(fat, goals.fat)}">${fat}</td>
+                <td class="${getColor(fib, goals.fiber)}">${fib}</td>
+            `;
+            historyBody.appendChild(tr);
+        });
+        
+        // Auto Scroll
+        document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+}
+
+// HELPER: Decides the color class
+function getColor(value, range) {
+    if (!range) return ""; // No range set? No color.
+
+    // 1. Check if Green (Inside Range)
+    if (value >= range.min && value <= range.max) {
+        return "stat-green";
+    }
+
+    // 2. Check if Yellow (Within 10% tolerance)
+    // Calculate 10% buffer
+    const bufferMin = range.min * 0.9;
+    const bufferMax = range.max * 1.1;
+    
+    if (value >= bufferMin && value <= bufferMax) {
+        return "stat-yellow";
+    }
+
+    // 3. Otherwise Red
+    return "stat-red";
+}
+How to customize it
+If you want to change the definition of "Yellow" (maybe you want a bigger buffer, or no yellow at all), look at the getColor function at the very bottom.
+
+To remove Yellow: Delete the "Check if Yellow" section. It will just snap from Green to Red immediately.
+
+To change ranges: Just edit the numbers in the const TARGETS section at the top.
+
+For Forrest, Calories at or below 2400 are green and above 2400 are red. Protein below 225 is red and at or above 225 is green. Carbs at or below 160 are green and above 160 are red. Fat at or below 85 is green and above 85 is red. Fiber less than 30 are red, between 30 and 40 are green, greater than 40 to 50 are yellow and above 50 are red.
+
+This is much more specific! Generic "Ranges" won't work here because some of your goals are "Limit" based (stay under 2400) while others are "Target" based (hit at least 225).
+
+To handle this perfectly, we will write a custom Logic Function specifically for you (getForrestColor). This gives you total control over every single rule without trying to force it into a generic box.
+
+Here is the updated JavaScript. I have programmed your rules exactly as you described.
+
+The Updated Script
+Replace the entire <script> section in your HTML file with this.
+
+HTML
+<script>
+    // --- CONFIGURATION ---
+    const scriptURL = 'YOUR_WEB_APP_URL_HERE'; 
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    // --- 1. DATA LOADING ---
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            data.forEach(row => {
+                let dateStr = "";
+                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
+
+                // Get values
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                // Determine logic based on User
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        
+        if (metric === 'calories') {
+            // At or below 2400 is green, above is red
+            return (val <= 2400) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'protein') {
+            // Below 225 is red, at or above 225 is green
+            return (val >= 225) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'carbs') {
+            // At or below 160 green, above red
+            return (val <= 160) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fat') {
+            // At or below 85 green, above red
+            return (val <= 85) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fiber') {
+            // < 30 Red
+            if (val < 30) return 'stat-red';
+            // 30 - 40 Green
+            if (val <= 40) return 'stat-green';
+            // 40 - 50 Yellow
+            if (val <= 50) return 'stat-yellow';
+            // > 50 Red
+            return 'stat-red';
+        }
+        
+        return ""; // Default no color
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    // (You can fill this in later with her specific rules)
+    function getChristineColor(metric, val) {
+        // Placeholder Logic
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+</script>
+Let's make sure I have it right:
+
+
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+  <style>
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+
+
+    /* TABLES */
+
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+
+    .text-left { text-align: left; }
+
+
+
+    /* INPUTS */
+
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+
+    
+
+    /* BUTTONS */
+
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+
+    .btn-add { background-color: #3498db; }
+
+    .btn-copy { background-color: #9b59b6; }
+
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+
+
+    /* TOTALS & LOG GRID */
+
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+
+  </style>
+
+</head>
+
+<body>
+
+
+
+  <h3>Meal Calculator</h3>
+
+  <table id="calcTable">
+
+    <thead>
+
+      <tr>
+
+        <th class="text-left">Food</th>
+
+        <th>Qty (Servings)</th>
+
+        <th>Calories (kcal)</th>
+
+        <th>Protein (g)</th>
+
+        <th>Carbs (g)</th>
+
+        <th>Fat (g)</th>
+
+        <th>Fiber (g)</th>
+
+        <th></th>
+
+      </tr>
+
+    </thead>
+
+    <tbody id="calcBody"></tbody>
+
+    <tfoot>
+
+      <tr class="totals-row">
+
+        <td class="text-left">TOTAL:</td>
+
+        <td>-</td>
+
+        <td id="t-cal">0</td>
+
+        <td id="t-pro">0</td>
+
+        <td id="t-carb">0</td>
+
+        <td id="t-fat">0</td>
+
+        <td id="t-fib">0</td>
+
+        <td></td>
+
+      </tr>
+
+    </tfoot>
+
+  </table>
+
+  
+
+  <div style="display: flex; gap: 10px;">
+
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+
+  </div>
+
+
+
+  <h3>Log Daily Entry</h3>
+
+  <form id="macroForm">
+
+    <div style="margin-bottom: 10px;">
+
+        <label>User: </label>
+
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+
+            <option value="Forrest">Forrest</option>
+
+            <option value="Christine">Christine</option>
+
+        </select>
+
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+
+    </div>
+
+
+
+    <div class="log-grid">
+
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+
+    </div>
+
+
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+
+  </form>
+
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+
+
+
+  <h3>History</h3>
+
+  <table id="historyTable">
+
+    <thead>
+
+      <tr>
+
+        <th>Date</th>
+
+        <th>Weight</th>
+
+        <th>Calories (kcal)</th>
+
+        <th>Protein (g)</th>
+
+        <th>Carbs (g)</th>
+
+        <th>Fat (g)</th>
+
+        <th>Fiber (g)</th>
+
+      </tr>
+
+    </thead>
+
+    <tbody id="historyBody"></tbody>
+
+  </table>
+
+
+
+  <script>
+
+    // --- SETTINGS ---
+
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; // PASTE YOUR URL
+
+
+
+ let foodDatabase = [];
+
+
+
+    window.onload = function() {
+
+        loadFoodData();
+
+        loadHistory();
+
+    };
+
+
+
+    // --- 1. DATA LOADING ---
+
+    function loadFoodData() {
+
+        fetch(scriptURL)
+
+        .then(res => res.json())
+
+        .then(data => {
+
+            foodDatabase = data;
+
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+
+            addRow(); 
+
+        });
+
+    }
+
+
+
+    function loadHistory() {
+
+        const user = document.getElementById('userSelect').value;
+
+        const historyBody = document.getElementById('historyBody');
+
+
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+
+
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+
+        .then(res => res.json())
+
+        .then(data => {
+
+            historyBody.innerHTML = ""; 
+
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+
+
+            data.forEach(row => {
+
+                let dateStr = "";
+
+                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
+
+
+
+                // Get values
+
+                const cal = parseFloat(row[2]) || 0;
+
+                const pro = parseFloat(row[3]) || 0;
+
+                const carb = parseFloat(row[4]) || 0;
+
+                const fat = parseFloat(row[5]) || 0;
+
+                const fib = parseFloat(row[6]) || 0;
+
+
+
+                // Determine logic based on User
+
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+
+
+                const tr = document.createElement('tr');
+
+                tr.innerHTML = `
+
+                    <td>${dateStr}</td>
+
+                    <td>${row[1]||"-"}</td>
+
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+
+                `;
+
+                historyBody.appendChild(tr);
+
+            });
+
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+        });
+
+    }
+
+
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+
+    function getForrestColor(metric, val) {
+
+        
+
+        if (metric === 'calories') {
+
+            // At or below 2400 is green, above is red
+
+            return (val <= 2400) ? 'stat-green' : 'stat-red';
+
+        }
+
+
+
+        if (metric === 'protein') {
+
+            // Below 225 is red, at or above 225 is green
+
+            return (val >= 225) ? 'stat-green' : 'stat-red';
+
+        }
+
+
+
+        if (metric === 'carbs') {
+
+            // At or below 160 green, above red
+
+            return (val <= 160) ? 'stat-green' : 'stat-red';
+
+        }
+
+
+
+        if (metric === 'fat') {
+
+            // At or below 85 green, above red
+
+            return (val <= 85) ? 'stat-green' : 'stat-red';
+
+        }
+
+
+
+        if (metric === 'fiber') {
+
+            // < 30 Red
+
+            if (val < 30) return 'stat-red';
+
+            // 30 - 40 Green
+
+            if (val <= 40) return 'stat-green';
+
+            // 40 - 50 Yellow
+
+            if (val <= 50) return 'stat-yellow';
+
+            // > 50 Red
+
+            return 'stat-red';
+
+        }
+
+        
+
+        return ""; // Default no color
+
+    }
+
+
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+
+    // (You can fill this in later with her specific rules)
+
+    function getChristineColor(metric, val) {
+
+        // Placeholder Logic
+
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+
+        return 'stat-green';
+
+    }
+
+
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+
+    function addRow() {
+
+        const tbody = document.getElementById('calcBody');
+
+        const tr = document.createElement('tr');
+
+        
+
+        let options = `<option value="">Select Food...</option>`;
+
+        let currentCat = "";
+
+        
+
+        foodDatabase.forEach((food, index) => {
+
+            if (food.category !== currentCat) {
+
+                if (currentCat !== "") options += `</optgroup>`;
+
+                currentCat = food.category;
+
+                options += `<optgroup label="${currentCat}">`;
+
+            }
+
+            options += `<option value="${index}">${food.name}</option>`;
+
+        });
+
+        if (currentCat !== "") options += `</optgroup>`;
+
+
+
+        tr.innerHTML = `
+
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+
+        `;
+
+        tbody.appendChild(tr);
+
+    }
+
+
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+
+
+    function calcRow(el) {
+
+        const tr = el.closest('tr');
+
+        const index = tr.querySelector('select').value;
+
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+
+
+        if (index !== "") {
+
+            const food = foodDatabase[index];
+
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+
+        }
+
+        calcTotals();
+
+    }
+
+
+
+    function calcTotals() {
+
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+
+        });
+
+        document.getElementById('t-cal').innerText = tCal;
+
+        document.getElementById('t-pro').innerText = tPro;
+
+        document.getElementById('t-carb').innerText = tCarb;
+
+        document.getElementById('t-fat').innerText = tFat;
+
+        document.getElementById('t-fib').innerText = tFib;
+
+    }
+
+
+
+    function copyToLog() {
+
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+
+    }
+
+
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+
+      e.preventDefault();
+
+      const status = document.getElementById('status');
+
+      status.innerText = "Saving...";
+
+      
+
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+
+        .then(() => {
+
+            status.innerText = "✅ Saved!";
+
+            e.target.reset();
+
+            setTimeout(loadHistory, 1000);
+
+        })
+
+        .catch(() => status.innerText = "❌ Error.");
+
+    });
+
+</script>
+
+</body>
+
+</html>
+
+You are 99% there! The JavaScript logic for Forrest's specific goals is perfect, and the structure is correct.
+
+However, you are missing one small but critical piece in the CSS.
+
+You defined the logic to assign classes like stat-green and stat-red, but you didn't actually define what colors those classes should look like in the <style> section. Without adding the CSS, the logic will run, but the text will stay black.
+
+Here is the Completed Code with the CSS colors added.
+
+Final Checklist Before You Paste:
+Backend Script: Ensure your Google Apps Script is updated to handle the 7 columns (A-G) and is deployed as a New Version.
+
+Sheet Data: Ensure your "FoodData" sheet has the columns: Category | Food | Cal | Pro | Carb | Fat | Fib (No Serving Size column).
+
+The Corrected Code
+HTML
 <!DOCTYPE html>
 <html>
 <head>
@@ -143,19 +2043,10 @@
             if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
 
             data.forEach(row => {
-                // DATE FIX: Check if date exists and is valid
-                let dateStr = ""; 
-                if (row[0]) {
-                    const d = new Date(row[0]);
-                    // isNaN(d) checks if the date is invalid
-                    if (!isNaN(d.getTime())) {
-                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    }
-                }
+                let dateStr = "";
+                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
 
-                // If date is still empty/invalid, skip this row entirely (Optional)
-                // Remove the "if" below if you want to see blank rows
-                if (dateStr === "") return;                // Get values
+                // Get values
                 const cal = parseFloat(row[2]) || 0;
                 const pro = parseFloat(row[3]) || 0;
                 const carb = parseFloat(row[4]) || 0;
@@ -183,8 +2074,6 @@
 
     // --- 2. CUSTOM LOGIC FOR FORREST ---
     function getForrestColor(metric, val) {
-        // IGNORE ZEROS
-        if (val === 0) return ""; 
         
         if (metric === 'calories') {
             // At or below 2400 is green, above is red
@@ -224,6 +2113,8 @@
     // (You can fill this in later with her specific rules)
     function getChristineColor(metric, val) {
         // Placeholder Logic
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
     }
 
     // --- 4. CALCULATOR & OTHER FUNCTIONS ---
@@ -311,3 +2202,1343 @@
   </script>
 </body>
 </html>
+I don't want 0 values to populate a color
+
+This is a smart adjustment. Often in spreadsheets, empty cells are read as 0, which would make your table look like a Christmas tree of red and green before you've even entered real data.
+
+To fix this, we just need to add a "Guard Clause" at the very top of your logic function. It essentially says: "If the value is 0, stop right here and don't pick a color."
+
+Here is the Final, Polished Code.
+
+What I changed:
+Updated getForrestColor: Added if (val === 0) return ""; at the very top.
+
+Updated getChristineColor: Added the same check, just in case.
+
+You can copy and paste this entire block to replace your current file.
+
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+    .text-left { text-align: left; }
+
+    /* CONDITIONAL FORMATTING COLORS */
+    .stat-green { background-color: #c8e6c9; color: #2e7d32; font-weight: bold; }
+    .stat-yellow { background-color: #fff9c4; color: #f9a825; font-weight: bold; }
+    .stat-red { background-color: #ffcdd2; color: #c62828; font-weight: bold; }
+
+    /* INPUTS */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+    
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+    /* TOTALS & LOG GRID */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h3>Meal Calculator</h3>
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty (Servings)</th>
+        <th>Calories (kcal)</th>
+        <th>Protein (g)</th>
+        <th>Carbs (g)</th>
+        <th>Fat (g)</th>
+        <th>Fiber (g)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <h3>Log Daily Entry</h3>
+  <form id="macroForm">
+    <div style="margin-bottom: 10px;">
+        <label>User: </label>
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+            <option value="Forrest">Forrest</option>
+            <option value="Christine">Christine</option>
+        </select>
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+
+  <h3>History</h3>
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Weight</th>
+        <th>Calories (kcal)</th>
+        <th>Protein (g)</th>
+        <th>Carbs (g)</th>
+        <th>Fat (g)</th>
+        <th>Fiber (g)</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    // Make sure this matches your deployed Web App URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; 
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    // --- 1. DATA LOADING ---
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            data.forEach(row => {
+                let dateStr = "";
+                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
+
+                // Get values
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                // Determine logic based on User
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        // IGNORE ZEROS
+        if (val === 0) return ""; 
+        
+        if (metric === 'calories') {
+            // At or below 2400 is green, above is red
+            return (val <= 2400) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'protein') {
+            // Below 225 is red, at or above 225 is green
+            return (val >= 225) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'carbs') {
+            // At or below 160 green, above red
+            return (val <= 160) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fat') {
+            // At or below 85 green, above red
+            return (val <= 85) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fiber') {
+            // < 30 Red
+            if (val < 30) return 'stat-red';
+            // 30 - 40 Green
+            if (val <= 40) return 'stat-green';
+            // 40 - 50 Yellow
+            if (val <= 50) return 'stat-yellow';
+            // > 50 Red
+            return 'stat-red';
+        }
+        
+        return ""; // Default no color
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    function getChristineColor(metric, val) {
+        if (val === 0) return ""; 
+
+        // Placeholder Logic
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+  </script>
+</body>
+</html>
+On the date column, can we prevent it from saying invalid date when there's no data on that row?
+
+Yes, that usually happens when the script picks up empty rows at the bottom of your spreadsheet or rows where the "Date" cell was accidentally deleted.
+
+We can fix this by adding a small "Check" inside the loop. We will tell the code: "If this date is broken or empty, just show a blank space instead of the words 'Invalid Date'."
+
+Here is the corrected code. I updated the loadHistory function (lines 142-148) to include this safety check.
+
+Final Code
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+    .text-left { text-align: left; }
+
+    /* CONDITIONAL FORMATTING COLORS */
+    .stat-green { background-color: #c8e6c9; color: #2e7d32; font-weight: bold; }
+    .stat-yellow { background-color: #fff9c4; color: #f9a825; font-weight: bold; }
+    .stat-red { background-color: #ffcdd2; color: #c62828; font-weight: bold; }
+
+    /* INPUTS */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+    
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+    /* TOTALS & LOG GRID */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h3>Meal Calculator</h3>
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty (Servings)</th>
+        <th>Calories (kcal)</th>
+        <th>Protein (g)</th>
+        <th>Carbs (g)</th>
+        <th>Fat (g)</th>
+        <th>Fiber (g)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <h3>Log Daily Entry</h3>
+  <form id="macroForm">
+    <div style="margin-bottom: 10px;">
+        <label>User: </label>
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+            <option value="Forrest">Forrest</option>
+            <option value="Christine">Christine</option>
+        </select>
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+
+  <h3>History</h3>
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Weight</th>
+        <th>Calories (kcal)</th>
+        <th>Protein (g)</th>
+        <th>Carbs (g)</th>
+        <th>Fat (g)</th>
+        <th>Fiber (g)</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; 
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    // --- 1. DATA LOADING ---
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            data.forEach(row => {
+                // DATE FIX: Check if date exists and is valid
+                let dateStr = ""; 
+                if (row[0]) {
+                    const d = new Date(row[0]);
+                    // isNaN(d) checks if the date is invalid
+                    if (!isNaN(d.getTime())) {
+                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
+
+                // If date is still empty/invalid, skip this row entirely (Optional)
+                // Remove the "if" below if you want to see blank rows
+                if (dateStr === "") return; 
+
+                // Get values
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                // Determine logic based on User
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        if (val === 0) return ""; 
+        
+        if (metric === 'calories') {
+            return (val <= 2400) ? 'stat-green' : 'stat-red';
+        }
+        if (metric === 'protein') {
+            return (val >= 225) ? 'stat-green' : 'stat-red';
+        }
+        if (metric === 'carbs') {
+            return (val <= 160) ? 'stat-green' : 'stat-red';
+        }
+        if (metric === 'fat') {
+            return (val <= 85) ? 'stat-green' : 'stat-red';
+        }
+        if (metric === 'fiber') {
+            if (val < 30) return 'stat-red';
+            if (val <= 40) return 'stat-green';
+            if (val <= 50) return 'stat-yellow';
+            return 'stat-red';
+        }
+        return ""; 
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    function getChristineColor(metric, val) {
+        if (val === 0) return ""; 
+        // Placeholder Logic
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+  </script>
+</body>
+</html>
+I'm using this as a web app on my phone. Can we add a refresh button?
+
+Yes, that is a very common need for mobile web apps. Since "pull-to-refresh" can sometimes reload the whole page and wipe out your calculator progress, we will add a dedicated Sync Button.
+
+I have added a "↻ Sync" button at the very top right.
+
+What it does: It re-downloads the History Log from Google Sheets immediately.
+
+What it protects: It does NOT clear your calculator. If you are halfway through calculating a meal, this button won't delete your numbers.
+
+I also added a specific line of code (<meta name="viewport"...) to the top. This stops the phone from "zooming in" when you tap an input box, making it feel much more like a real app.
+
+Final Code
+Copy and replace your entire file.
+
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f5f5f5; }
+    
+    /* HEADER STYLES */
+    .header-container { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    h3 { color: #333; margin: 0; }
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 10px; font-size: 0.75em; text-transform: uppercase; text-align: center;}
+    td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.9em;}
+    .text-left { text-align: left; }
+
+    /* CONDITIONAL FORMATTING COLORS */
+    .stat-green { background-color: #c8e6c9; color: #2e7d32; font-weight: bold; }
+    .stat-yellow { background-color: #fff9c4; color: #f9a825; font-weight: bold; }
+    .stat-red { background-color: #ffcdd2; color: #c62828; font-weight: bold; }
+
+    /* INPUTS */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px; /* Prevents iOS zoom */ }
+    .qty-input { width: 60px; text-align: center; font-weight: bold; }
+    
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; padding: 12px; }
+    .btn-del { background-color: #e74c3c; padding: 6px 10px; font-size: 12px; }
+    
+    /* REFRESH BUTTON */
+    .btn-refresh { background-color: #607d8b; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+
+    /* TOTALS & LOG GRID */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.7em; color: #777; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="header-container">
+    <h3>Meal Calculator</h3>
+    <button class="btn btn-refresh" onclick="refreshData()">
+      <span>↻</span> Sync
+    </button>
+  </div>
+
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <div class="header-container" style="margin-top: 30px;">
+    <h3>Log Daily Entry</h3>
+  </div>
+
+  <form id="macroForm">
+    <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+        <div style="flex: 1;">
+            <label style="font-size: 0.8em; color: #666;">User</label>
+            <select id="userSelect" name="user" onchange="loadHistory()">
+                <option value="Forrest">Forrest</option>
+                <option value="Christine">Christine</option>
+            </select>
+        </div>
+        <div style="width: 100px;">
+            <label style="font-size: 0.8em; color: #666;">Weight</label>
+            <input type="number" name="weight" placeholder="lbs" step="0.1">
+        </div>
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold; min-height: 20px;"></p>
+
+  <div class="header-container" style="margin-top: 30px;">
+    <h3>History</h3>
+  </div>
+  
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Wt</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; 
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    // --- REFRESH BUTTON FUNCTION ---
+    function refreshData() {
+        // We only reload history to avoid wiping the calculator inputs
+        const btn = document.querySelector('.btn-refresh');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "Loading...";
+        btn.style.opacity = "0.7";
+        
+        loadHistory().then(() => {
+            btn.innerHTML = originalText;
+            btn.style.opacity = "1";
+        });
+        // We re-fetch food data too, just in case you added new foods to the sheet
+        loadFoodData(); 
+    }
+
+    // --- 1. DATA LOADING ---
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            
+            // Only add a row if the table is totally empty (first load)
+            // This prevents the refresh button from adding duplicate empty rows
+            const tbody = document.getElementById('calcBody');
+            if(tbody.children.length === 0) {
+                addRow(); 
+            }
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        // Return the promise so the Refresh button knows when it's done
+        return fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            data.forEach(row => {
+                let dateStr = ""; 
+                if (row[0]) {
+                    const d = new Date(row[0]);
+                    if (!isNaN(d.getTime())) {
+                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
+                if (dateStr === "") return; 
+
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        if (val === 0) return ""; 
+        
+        if (metric === 'calories') return (val <= 2400) ? 'stat-green' : 'stat-red';
+        if (metric === 'protein') return (val >= 225) ? 'stat-green' : 'stat-red';
+        if (metric === 'carbs') return (val <= 160) ? 'stat-green' : 'stat-red';
+        if (metric === 'fat') return (val <= 85) ? 'stat-green' : 'stat-red';
+        if (metric === 'fiber') {
+            if (val < 30) return 'stat-red';
+            if (val <= 40) return 'stat-green';
+            if (val <= 50) return 'stat-yellow';
+            return 'stat-red';
+        }
+        return ""; 
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    function getChristineColor(metric, val) {
+        if (val === 0) return ""; 
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+  </script>
+</body>
+</html>
+give me a header with a photo placement in the center of the page. The file is titled photo.png. Link it to https://forr-white.github.io/macro-counter/
+
+Here is the updated code. I have added a new section at the very top of the <body> that centers your photo.png and wraps it in the link you provided.
+
+I also added a CSS class (.logo-container) to ensure the image sizes down correctly on mobile phones so it doesn't take up the whole screen.
+
+Final Code
+Copy and replace your entire file.
+
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px; background-color: #f5f5f5; }
+    
+    /* NEW LOGO HEADER STYLES */
+    .logo-container { text-align: center; margin-bottom: 20px; }
+    .logo-img { 
+        max-width: 150px; /* Limits size so it looks good on phone */
+        height: auto; 
+        border-radius: 8px; /* Optional: Slight curve on corners */
+    }
+
+    /* HEADER STYLES */
+    .header-container { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    h3 { color: #333; margin: 0; }
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 10px; font-size: 0.75em; text-transform: uppercase; text-align: center;}
+    td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.9em;}
+    .text-left { text-align: left; }
+
+    /* CONDITIONAL FORMATTING COLORS */
+    .stat-green { background-color: #c8e6c9; color: #2e7d32; font-weight: bold; }
+    .stat-yellow { background-color: #fff9c4; color: #f9a825; font-weight: bold; }
+    .stat-red { background-color: #ffcdd2; color: #c62828; font-weight: bold; }
+
+    /* INPUTS */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px; }
+    .qty-input { width: 60px; text-align: center; font-weight: bold; }
+    
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; padding: 12px; }
+    .btn-del { background-color: #e74c3c; padding: 6px 10px; font-size: 12px; }
+    .btn-refresh { background-color: #607d8b; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+
+    /* TOTALS & LOG GRID */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.7em; color: #777; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="logo-container">
+    <a href="https://forr-white.github.io/macro-counter/">
+        <img src="photo.png" alt="App Logo" class="logo-img">
+    </a>
+  </div>
+
+  <div class="header-container">
+    <h3>Meal Calculator</h3>
+    <button class="btn btn-refresh" onclick="refreshData()">
+      <span>↻</span> Sync
+    </button>
+  </div>
+
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <div class="header-container" style="margin-top: 30px;">
+    <h3>Log Daily Entry</h3>
+  </div>
+
+  <form id="macroForm">
+    <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+        <div style="flex: 1;">
+            <label style="font-size: 0.8em; color: #666;">User</label>
+            <select id="userSelect" name="user" onchange="loadHistory()">
+                <option value="Forrest">Forrest</option>
+                <option value="Christine">Christine</option>
+            </select>
+        </div>
+        <div style="width: 100px;">
+            <label style="font-size: 0.8em; color: #666;">Weight</label>
+            <input type="number" name="weight" placeholder="lbs" step="0.1">
+        </div>
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold; min-height: 20px;"></p>
+
+  <div class="header-container" style="margin-top: 30px;">
+    <h3>History</h3>
+  </div>
+  
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Wt</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; 
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData();
+        loadHistory();
+    };
+
+    function refreshData() {
+        const btn = document.querySelector('.btn-refresh');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "Loading...";
+        btn.style.opacity = "0.7";
+        loadHistory().then(() => {
+            btn.innerHTML = originalText;
+            btn.style.opacity = "1";
+        });
+        loadFoodData(); 
+    }
+
+    // --- 1. DATA LOADING ---
+    function loadFoodData() {
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            
+            const tbody = document.getElementById('calcBody');
+            if(tbody.children.length === 0) {
+                addRow(); 
+            }
+        });
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+        return fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+
+            data.forEach(row => {
+                let dateStr = ""; 
+                if (row[0]) {
+                    const d = new Date(row[0]);
+                    if (!isNaN(d.getTime())) {
+                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
+                if (dateStr === "") return; 
+
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
+
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        if (val === 0) return ""; 
+        
+        if (metric === 'calories') return (val <= 2400) ? 'stat-green' : 'stat-red';
+        if (metric === 'protein') return (val >= 225) ? 'stat-green' : 'stat-red';
+        if (metric === 'carbs') return (val <= 160) ? 'stat-green' : 'stat-red';
+        if (metric === 'fat') return (val <= 85) ? 'stat-green' : 'stat-red';
+        if (metric === 'fiber') {
+            if (val < 30) return 'stat-red';
+            if (val <= 40) return 'stat-green';
+            if (val <= 50) return 'stat-yellow';
+            return 'stat-red';
+        }
+        return ""; 
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    function getChristineColor(metric, val) {
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name}</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    document.getElementById('macroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(() => status.innerText = "❌ Error.");
+    });
+  </script>
+</body>
+</html>
+
+
+
+Gemini can make mistakes, so double-check it
+
