@@ -11,6 +11,11 @@
     td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
     .text-left { text-align: left; }
 
+    /* CONDITIONAL FORMATTING COLORS (ADDED THESE) */
+    .stat-green { background-color: #c8e6c9; color: #2e7d32; font-weight: bold; }
+    .stat-yellow { background-color: #fff9c4; color: #f9a825; font-weight: bold; }
+    .stat-red { background-color: #ffcdd2; color: #c62828; font-weight: bold; }
+
     /* INPUTS */
     input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
     .qty-input { width: 70px; text-align: center; font-weight: bold; }
@@ -105,9 +110,9 @@
 
   <script>
     // --- SETTINGS ---
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; // PASTE YOUR URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; 
 
- let foodDatabase = [];
+    let foodDatabase = [];
 
     window.onload = function() {
         loadFoodData();
@@ -294,6 +299,6 @@
         })
         .catch(() => status.innerText = "❌ Error.");
     });
-</script>
+  </script>
 </body>
 </html>
