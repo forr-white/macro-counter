@@ -16,8 +16,8 @@
 
     /* TABLES */
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
-    th { background-color: #2c3e50; color: white; padding: 10px; font-size: 0.75em; text-transform: uppercase; text-align: center;}
-    td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.9em;}
+    th { background-color: #2c3e50; color: white; padding: 8px 4px; font-size: 0.7em; text-transform: uppercase; text-align: center;}
+    td { padding: 8px 4px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.85em;}
     .text-left { text-align: left; }
 
     /* CONDITIONAL FORMATTING COLORS */
@@ -42,7 +42,7 @@
     .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .log-grid div label { display: block; font-size: 0.7em; color: #777; margin-bottom: 2px; }
     
-    /* NEW: PROFILE GRID (User, Weight, Burned) */
+    /* PROFILE GRID */
     .profile-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     
     /* Apple Watch Style Input */
@@ -136,10 +136,12 @@
       <tr>
         <th>Date</th>
         <th>Cal</th>
-        <th>Burn</th> <th>Net</th>  <th>Pro</th>
+        <th>Burn</th>
+        <th>Net</th>
+        <th>Pro</th>
         <th>Carb</th>
         <th>Fat</th>
-      </tr>
+        <th>Fib</th> </tr>
     </thead>
     <tbody id="historyBody"></tbody>
   </table>
@@ -183,13 +185,13 @@
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
-        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+        historyBody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
 
         return fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
             historyBody.innerHTML = ""; 
-            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="8">No logs.</td></tr>'; return; }
 
             data.forEach(row => {
                 let dateStr = ""; 
@@ -206,15 +208,11 @@
                 const pro = parseFloat(row[3]) || 0;
                 const carb = parseFloat(row[4]) || 0;
                 const fat = parseFloat(row[5]) || 0;
-                // Row 6 is Fiber (not shown in main table to save space, or you can add it back)
-                const burned = parseFloat(row[7]) || 0; // New Column 8 (index 7)
+                const fib = parseFloat(row[6]) || 0;
+                const burned = parseFloat(row[7]) || 0; 
 
                 // Calculate Net
                 const net = cal - burned;
-                
-                // Net Color Logic (Green if negative/deficit, Red if surplus)
-                // Adjust this logic based on your goal (Weight loss vs Gain)
-                // Currently: Green if Net < 0 (Deficit)
                 let netClass = (net < 0) ? "stat-green" : ""; 
 
                 let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
@@ -228,6 +226,7 @@
                     <td class="${colorFunc('protein', pro)}">${pro}</td>
                     <td class="${colorFunc('carbs', carb)}">${carb}</td>
                     <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
                 `;
                 historyBody.appendChild(tr);
             });
@@ -242,6 +241,12 @@
         if (metric === 'protein') return (val >= 225) ? 'stat-green' : 'stat-red';
         if (metric === 'carbs') return (val <= 160) ? 'stat-green' : 'stat-red';
         if (metric === 'fat') return (val <= 85) ? 'stat-green' : 'stat-red';
+        if (metric === 'fiber') {
+            if (val < 30) return 'stat-red';
+            if (val <= 40) return 'stat-green';
+            if (val <= 50) return 'stat-yellow';
+            return 'stat-red';
+        }
         return ""; 
     }
 
