@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+    h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
+
+    /* GLOBAL TABLE STYLES */
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+    th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
+    td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
+    
+    /* Specific alignments */
+    .text-left { text-align: left; }
+    .text-bold { font-weight: bold; }
+
+    /* Inputs & Layout */
+    input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .qty-input { width: 70px; text-align: center; font-weight: bold; }
+    
+    /* Buttons */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.8; }
+    .btn-add { background-color: #3498db; }
+    .btn-copy { background-color: #9b59b6; }
+    .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
+    .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
+
+    /* Totals Row */
+    .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
+
+    /* Log Grid */
+    .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h3>Meal Calculator</h3>
+  <table id="calcTable">
+    <thead>
+      <tr>
+        <th class="text-left">Food</th>
+        <th>Qty</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
+        <th>Fat</th>
+        <th>Fib</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="calcBody"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td class="text-left">TOTAL:</td>
+        <td>-</td>
+        <td id="t-cal">0</td>
+        <td id="t-pro">0</td>
+        <td id="t-carb">0</td>
+        <td id="t-fat">0</td>
+        <td id="t-fib">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  
+  <div style="display: flex; gap: 10px;">
+    <button class="btn btn-add" onclick="addRow()">+ Add Item</button>
+    <button class="btn btn-copy" onclick="copyToLog()">⬇ Move to Log</button>
+  </div>
+
+  <h3>Log Daily Entry</h3>
+  <form id="macroForm">
+    <div style="margin-bottom: 10px;">
+        <label>User: </label>
+        <select id="userSelect" name="user" style="width: auto; display: inline-block;" onchange="loadHistory()">
+            <option value="Forrest">Forrest</option>
+            <option value="Christine">Christine</option>
+        </select>
+        <input type="number" name="weight" placeholder="Weight (lbs)" step="0.1" style="width: 120px; display: inline-block; margin-left: 10px;">
+    </div>
+
+    <div class="log-grid">
+        <div><label>Calories</label><input type="number" id="in-cal" name="calories"></div>
+        <div><label>Protein</label><input type="number" id="in-pro" name="protein"></div>
+        <div><label>Carbs</label><input type="number" id="in-carb" name="carbs"></div>
+        <div><label>Fat</label><input type="number" id="in-fat" name="fat"></div>
+        <div><label>Fiber</label><input type="number" id="in-fib" name="fiber"></div>
+    </div>
+
+    <button type="submit" class="btn btn-save">Save to Log</button>
+  </form>
+  <p id="status" style="text-align: center; margin-top: 10px; height: 20px;"></p>
+
+  <h3>History (Last 10 Entries)</h3>
+  <table id="historyTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Weight</th>
+        <th>Calories</th>
+        <th>Protein</th>
+        <th>Carbs</th>
+        <th>Fat</th>
+        <th>Fiber</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody">
+      <tr><td colspan="7">Loading history...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    // --- SETTINGS ---
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxscehVhgbMEXHtbULTtX-koOOU0GL6BVcQIQfWrHQ8DJCHG7GAXkE_z3Kh9aIukYWZ/exec'; // Update this!
+
+    let foodDatabase = [];
+
+    window.onload = function() {
+        loadFoodData(); // Get the foods for the calculator
+        loadHistory();  // Get the logs for the history table
+    };
+
+    // --- 1. DATA LOADING FUNCTIONS ---
+
+    function loadFoodData() {
+        // Standard GET request (no action param needed, defaults to foods)
+        fetch(scriptURL)
+        .then(res => res.json())
+        .then(data => {
+            foodDatabase = data;
+            foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
+            addRow(); 
+        })
+        .catch(err => console.error("Error loading foods:", err));
+    }
+
+    function loadHistory() {
+        const user = document.getElementById('userSelect').value;
+        const historyBody = document.getElementById('historyBody');
+        historyBody.innerHTML = '<tr><td colspan="7" style="color:#777;">Refreshing...</td></tr>';
+
+        // Fetch with ?action=getHistory&user=NAME
+        fetch(`${scriptURL}?action=getHistory&user=${user}`)
+        .then(res => res.json())
+        .then(data => {
+            historyBody.innerHTML = ""; // Clear loading message
+            
+            if (data.length === 0) {
+                 historyBody.innerHTML = '<tr><td colspan="7">No logs found.</td></tr>';
+                 return;
+            }
+
+            data.forEach(row => {
+                // Parse Date (Row[0])
+                let dateStr = "";
+                try {
+                    const dateObj = new Date(row[0]);
+                    // Format: Jan 6
+                    dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
+                } catch(e) { dateStr = "Date Err"; }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1] || "-"}</td>
+                    <td>${row[2]}</td>
+                    <td>${row[3]}</td>
+                    <td>${row[4]}</td>
+                    <td>${row[5]}</td>
+                    <td>${row[6]}</td>
+                `;
+                historyBody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            historyBody.innerHTML = '<tr><td colspan="7" style="color:red;">Error loading history.</td></tr>';
+        });
+    }
+
+    // --- 2. CALCULATOR FUNCTIONS ---
+
+    function addRow() {
+        const tbody = document.getElementById('calcBody');
+        const tr = document.createElement('tr');
+        
+        let options = `<option value="">Select Food...</option>`;
+        let currentCat = "";
+        
+        foodDatabase.forEach((food, index) => {
+            if (food.category !== currentCat) {
+                if (currentCat !== "") options += `</optgroup>`;
+                currentCat = food.category;
+                options += `<optgroup label="${currentCat}">`;
+            }
+            options += `<option value="${index}">${food.name} (${food.serve})</option>`;
+        });
+        if (currentCat !== "") options += `</optgroup>`;
+
+        tr.innerHTML = `
+            <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
+            <td><input type="number" class="qty-input" placeholder="0" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td>
+            <td class="r-pro">0</td>
+            <td class="r-carb">0</td>
+            <td class="r-fat">0</td>
+            <td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">X</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) {
+        btn.closest('tr').remove();
+        calcTotals();
+    }
+
+    function calcRow(el) {
+        const tr = el.closest('tr');
+        const index = tr.querySelector('select').value;
+        const qty = parseFloat(tr.querySelector('input').value) || 0;
+
+        if (index !== "") {
+            const food = foodDatabase[index];
+            const servingSize = parseFloat(food.serve) || 1; 
+            const ratio = qty / servingSize; 
+
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * ratio);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * ratio);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * ratio);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * ratio);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * ratio);
+        }
+        calcTotals();
+    }
+
+    function calcTotals() {
+        let tCal=0, tPro=0, tCarb=0, tFat=0, tFib=0;
+        document.querySelectorAll('#calcBody tr').forEach(tr => {
+            tCal += parseFloat(tr.querySelector('.r-cal').innerText) || 0;
+            tPro += parseFloat(tr.querySelector('.r-pro').innerText) || 0;
+            tCarb += parseFloat(tr.querySelector('.r-carb').innerText) || 0;
+            tFat += parseFloat(tr.querySelector('.r-fat').innerText) || 0;
+            tFib += parseFloat(tr.querySelector('.r-fib').innerText) || 0;
+        });
+        document.getElementById('t-cal').innerText = tCal;
+        document.getElementById('t-pro').innerText = tPro;
+        document.getElementById('t-carb').innerText = tCarb;
+        document.getElementById('t-fat').innerText = tFat;
+        document.getElementById('t-fib').innerText = tFib;
+    }
+
+    function copyToLog() {
+        document.getElementById('in-cal').value = document.getElementById('t-cal').innerText;
+        document.getElementById('in-pro').value = document.getElementById('t-pro').innerText;
+        document.getElementById('in-carb').value = document.getElementById('t-carb').innerText;
+        document.getElementById('in-fat').value = document.getElementById('t-fat').innerText;
+        document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
+    }
+
+    // --- 3. SUBMIT LOGIC ---
+
+    const form = document.getElementById('macroForm');
+    const statusMsg = document.getElementById('status');
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      statusMsg.innerText = "Saving...";
+      statusMsg.style.color = "blue";
+      
+      fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+        .then(response => {
+            statusMsg.innerText = "✅ Saved successfully!";
+            statusMsg.style.color = "green";
+            form.reset(); // Clear inputs
+            
+            // Wait 1 second then reload history so the new entry shows up
+            setTimeout(loadHistory, 1000);
+        })
+        .catch(error => {
+            statusMsg.innerText = "❌ Error saving.";
+            statusMsg.style.color = "red";
+        });
+    });
+  </script>
+
+</body>
+</html>
