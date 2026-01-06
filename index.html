@@ -107,20 +107,19 @@
     // --- SETTINGS ---
     const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; // PASTE YOUR URL
 
-    let foodDatabase = [];
+ let foodDatabase = [];
 
     window.onload = function() {
         loadFoodData();
         loadHistory();
     };
 
-    // 1. DATA LOADING
+    // --- 1. DATA LOADING ---
     function loadFoodData() {
         fetch(scriptURL)
         .then(res => res.json())
         .then(data => {
             foodDatabase = data;
-            // Sort by Category (Column A)
             foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
             addRow(); 
         });
@@ -129,6 +128,7 @@
     function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
+
         historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
         fetch(`${scriptURL}?action=getHistory&user=${user}`)
@@ -137,23 +137,82 @@
             historyBody.innerHTML = ""; 
             if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
 
-            // Reverse removed, now shows Oldest -> Newest (Bottom)
             data.forEach(row => {
                 let dateStr = "";
-                try {
-                   dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
-                } catch(e) {}
+                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
+
+                // Get values
+                const cal = parseFloat(row[2]) || 0;
+                const pro = parseFloat(row[3]) || 0;
+                const carb = parseFloat(row[4]) || 0;
+                const fat = parseFloat(row[5]) || 0;
+                const fib = parseFloat(row[6]) || 0;
+
+                // Determine logic based on User
+                let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
 
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${dateStr}</td><td>${row[1]||"-"}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[6]}</td>`;
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${row[1]||"-"}</td>
+                    <td class="${colorFunc('calories', cal)}">${cal}</td>
+                    <td class="${colorFunc('protein', pro)}">${pro}</td>
+                    <td class="${colorFunc('carbs', carb)}">${carb}</td>
+                    <td class="${colorFunc('fat', fat)}">${fat}</td>
+                    <td class="${colorFunc('fiber', fib)}">${fib}</td>
+                `;
                 historyBody.appendChild(tr);
             });
-            // Auto-scroll to bottom
             document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
         });
     }
 
-    // 2. CALCULATOR
+    // --- 2. CUSTOM LOGIC FOR FORREST ---
+    function getForrestColor(metric, val) {
+        
+        if (metric === 'calories') {
+            // At or below 2400 is green, above is red
+            return (val <= 2400) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'protein') {
+            // Below 225 is red, at or above 225 is green
+            return (val >= 225) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'carbs') {
+            // At or below 160 green, above red
+            return (val <= 160) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fat') {
+            // At or below 85 green, above red
+            return (val <= 85) ? 'stat-green' : 'stat-red';
+        }
+
+        if (metric === 'fiber') {
+            // < 30 Red
+            if (val < 30) return 'stat-red';
+            // 30 - 40 Green
+            if (val <= 40) return 'stat-green';
+            // 40 - 50 Yellow
+            if (val <= 50) return 'stat-yellow';
+            // > 50 Red
+            return 'stat-red';
+        }
+        
+        return ""; // Default no color
+    }
+
+    // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
+    // (You can fill this in later with her specific rules)
+    function getChristineColor(metric, val) {
+        // Placeholder Logic
+        if (metric === 'calories' && val > 1800) return 'stat-red';
+        return 'stat-green';
+    }
+
+    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
     function addRow() {
         const tbody = document.getElementById('calcBody');
         const tr = document.createElement('tr');
@@ -167,7 +226,6 @@
                 currentCat = food.category;
                 options += `<optgroup label="${currentCat}">`;
             }
-            // Removed (${food.serve}) from label since it doesn't exist anymore
             options += `<option value="${index}">${food.name}</option>`;
         });
         if (currentCat !== "") options += `</optgroup>`;
@@ -190,8 +248,6 @@
 
         if (index !== "") {
             const food = foodDatabase[index];
-            // NEW MATH: Simple Multiplication
-            // It assumes the sheet data is for "1 serving"
             tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
             tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
             tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
@@ -225,7 +281,6 @@
         document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
     }
 
-    // 3. SUBMIT
     document.getElementById('macroForm').addEventListener('submit', e => {
       e.preventDefault();
       const status = document.getElementById('status');
@@ -239,6 +294,6 @@
         })
         .catch(() => status.innerText = "❌ Error.");
     });
-  </script>
+</script>
 </body>
 </html>
