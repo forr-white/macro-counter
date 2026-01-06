@@ -176,26 +176,31 @@
     function getForrestColor(metric, val) {
         
         if (metric === 'calories') {
+            return (val = 0) ? "";
             // At or below 2400 is green, above is red
             return (val <= 2400) ? 'stat-green' : 'stat-red';
         }
 
         if (metric === 'protein') {
+            return (val = 0) ? "";
             // Below 225 is red, at or above 225 is green
             return (val >= 225) ? 'stat-green' : 'stat-red';
         }
 
         if (metric === 'carbs') {
+            return (val = 0) ? "";
             // At or below 160 green, above red
             return (val <= 160) ? 'stat-green' : 'stat-red';
         }
 
         if (metric === 'fat') {
+            return (val = 0) ? "";
             // At or below 85 green, above red
             return (val <= 85) ? 'stat-green' : 'stat-red';
         }
 
         if (metric === 'fiber') {
+            if (val = 0) return "";
             // < 30 Red
             if (val < 30) return 'stat-red';
             // 30 - 40 Green
