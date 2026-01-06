@@ -143,10 +143,19 @@
             if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
 
             data.forEach(row => {
-                let dateStr = "";
-                try { dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch(e) {}
+                // DATE FIX: Check if date exists and is valid
+                let dateStr = ""; 
+                if (row[0]) {
+                    const d = new Date(row[0]);
+                    // isNaN(d) checks if the date is invalid
+                    if (!isNaN(d.getTime())) {
+                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
 
-                // Get values
+                // If date is still empty/invalid, skip this row entirely (Optional)
+                // Remove the "if" below if you want to see blank rows
+                if (dateStr === "") return;                // Get values
                 const cal = parseFloat(row[2]) || 0;
                 const pro = parseFloat(row[3]) || 0;
                 const carb = parseFloat(row[4]) || 0;
