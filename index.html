@@ -16,8 +16,8 @@
 
     /* TABLES */
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
-    th { background-color: #2c3e50; color: white; padding: 8px 4px; font-size: 0.7em; text-transform: uppercase; text-align: center;}
-    td { padding: 8px 4px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.85em;}
+    th { background-color: #2c3e50; color: white; padding: 8px 2px; font-size: 0.65em; text-transform: uppercase; text-align: center;}
+    td { padding: 8px 2px; border-bottom: 1px solid #eee; text-align: center; color: #333; font-size: 0.8em;}
     .text-left { text-align: left; }
 
     /* CONDITIONAL FORMATTING COLORS */
@@ -135,19 +135,22 @@
     <thead>
       <tr>
         <th>Date</th>
+        <th>Wt</th>
         <th>Cal</th>
         <th>Burn</th>
         <th>Net</th>
         <th>Pro</th>
         <th>Carb</th>
         <th>Fat</th>
-        <th>Fib</th> </tr>
+        <th>Fib</th> 
+      </tr>
     </thead>
     <tbody id="historyBody"></tbody>
   </table>
 
   <script>
     // --- SETTINGS ---
+    // UPDATED WITH YOUR NEW URL
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzb3-GgedpsijvXEAZ7KPGS29x8dTFjloGa0WYB_6Nqqk4YNn87lksaUoAC7K5H40e6fA/exec'; 
 
     let foodDatabase = [];
@@ -185,13 +188,13 @@
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
-        historyBody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+        historyBody.innerHTML = '<tr><td colspan="9">Loading...</td></tr>';
 
         return fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
             historyBody.innerHTML = ""; 
-            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="8">No logs.</td></tr>'; return; }
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="9">No logs.</td></tr>'; return; }
 
             data.forEach(row => {
                 let dateStr = ""; 
@@ -204,6 +207,7 @@
                 if (dateStr === "") return; 
 
                 // Parse Data
+                const weight = row[1] || "-"; 
                 const cal = parseFloat(row[2]) || 0;
                 const pro = parseFloat(row[3]) || 0;
                 const carb = parseFloat(row[4]) || 0;
@@ -220,6 +224,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${dateStr}</td>
+                    <td>${weight}</td>
                     <td class="${colorFunc('calories', cal)}">${cal}</td>
                     <td>${burned}</td>
                     <td class="${netClass}">${net}</td>
