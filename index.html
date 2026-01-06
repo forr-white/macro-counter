@@ -5,31 +5,25 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
     h3 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 30px;}
 
-    /* GLOBAL TABLE STYLES */
+    /* TABLES */
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
     th { background-color: #2c3e50; color: white; padding: 12px; font-size: 0.8em; text-transform: uppercase; text-align: center;}
     td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; color: #333;}
-    
-    /* Specific alignments */
     .text-left { text-align: left; }
-    .text-bold { font-weight: bold; }
 
-    /* Inputs & Layout */
+    /* INPUTS */
     input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
     .qty-input { width: 70px; text-align: center; font-weight: bold; }
     
-    /* Buttons */
-    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; transition: opacity 0.2s; }
-    .btn:hover { opacity: 0.8; }
+    /* BUTTONS */
+    .btn { cursor: pointer; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; color: white; }
     .btn-add { background-color: #3498db; }
     .btn-copy { background-color: #9b59b6; }
     .btn-save { background-color: #27ae60; width: 100%; margin-top: 15px; font-size: 1.1em; }
     .btn-del { background-color: #e74c3c; padding: 4px 8px; font-size: 12px; }
 
-    /* Totals Row */
+    /* TOTALS & LOG GRID */
     .totals-row td { font-weight: bold; background-color: #ecf0f1; border-top: 2px solid #bdc3c7; }
-
-    /* Log Grid */
     .log-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .log-grid div label { display: block; font-size: 0.75em; color: #777; margin-bottom: 3px; }
   </style>
@@ -41,7 +35,7 @@
     <thead>
       <tr>
         <th class="text-left">Food</th>
-        <th>Qty</th>
+        <th>Qty (Servings)</th>
         <th>Cal</th>
         <th>Pro</th>
         <th>Carb</th>
@@ -91,97 +85,75 @@
 
     <button type="submit" class="btn btn-save">Save to Log</button>
   </form>
-  <p id="status" style="text-align: center; margin-top: 10px; height: 20px;"></p>
+  <p id="status" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
 
-  <h3>History (Last 10 Entries)</h3>
+  <h3>History</h3>
   <table id="historyTable">
     <thead>
       <tr>
         <th>Date</th>
-        <th>Weight</th>
-        <th>Calories</th>
-        <th>Protein</th>
-        <th>Carbs</th>
+        <th>Wt</th>
+        <th>Cal</th>
+        <th>Pro</th>
+        <th>Carb</th>
         <th>Fat</th>
-        <th>Fiber</th>
+        <th>Fib</th>
       </tr>
     </thead>
-    <tbody id="historyBody">
-      <tr><td colspan="7">Loading history...</td></tr>
-    </tbody>
+    <tbody id="historyBody"></tbody>
   </table>
 
   <script>
     // --- SETTINGS ---
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxscehVhgbMEXHtbULTtX-koOOU0GL6BVcQIQfWrHQ8DJCHG7GAXkE_z3Kh9aIukYWZ/exec'; // Update this!
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxK1ydSSXucxpYTy53-lPnJDDT6d8QrsPo9SfiexgMVO3uPp9oSnkV3wiHM7w-CHf6F4g/exec'; // PASTE YOUR URL
 
     let foodDatabase = [];
 
     window.onload = function() {
-        loadFoodData(); // Get the foods for the calculator
-        loadHistory();  // Get the logs for the history table
+        loadFoodData();
+        loadHistory();
     };
 
-    // --- 1. DATA LOADING FUNCTIONS ---
-
+    // 1. DATA LOADING
     function loadFoodData() {
-        // Standard GET request (no action param needed, defaults to foods)
         fetch(scriptURL)
         .then(res => res.json())
         .then(data => {
             foodDatabase = data;
+            // Sort by Category (Column A)
             foodDatabase.sort((a, b) => (a.category > b.category) ? 1 : -1);
             addRow(); 
-        })
-        .catch(err => console.error("Error loading foods:", err));
+        });
     }
 
     function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
-        historyBody.innerHTML = '<tr><td colspan="7" style="color:#777;">Refreshing...</td></tr>';
+        historyBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
-        // Fetch with ?action=getHistory&user=NAME
         fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
-            historyBody.innerHTML = ""; // Clear loading message
-            
-            if (data.length === 0) {
-                 historyBody.innerHTML = '<tr><td colspan="7">No logs found.</td></tr>';
-                 return;
-            }
+            historyBody.innerHTML = ""; 
+            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="7">No logs.</td></tr>'; return; }
 
+            // Reverse removed, now shows Oldest -> Newest (Bottom)
             data.forEach(row => {
-                // Parse Date (Row[0])
                 let dateStr = "";
                 try {
-                    const dateObj = new Date(row[0]);
-                    // Format: Jan 6
-                    dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
-                } catch(e) { dateStr = "Date Err"; }
+                   dateStr = new Date(row[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); 
+                } catch(e) {}
 
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${dateStr}</td>
-                    <td>${row[1] || "-"}</td>
-                    <td>${row[2]}</td>
-                    <td>${row[3]}</td>
-                    <td>${row[4]}</td>
-                    <td>${row[5]}</td>
-                    <td>${row[6]}</td>
-                `;
+                tr.innerHTML = `<td>${dateStr}</td><td>${row[1]||"-"}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[6]}</td>`;
                 historyBody.appendChild(tr);
             });
-        })
-        .catch(err => {
-            console.error(err);
-            historyBody.innerHTML = '<tr><td colspan="7" style="color:red;">Error loading history.</td></tr>';
+            // Auto-scroll to bottom
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
         });
     }
 
-    // --- 2. CALCULATOR FUNCTIONS ---
-
+    // 2. CALCULATOR
     function addRow() {
         const tbody = document.getElementById('calcBody');
         const tr = document.createElement('tr');
@@ -195,27 +167,21 @@
                 currentCat = food.category;
                 options += `<optgroup label="${currentCat}">`;
             }
-            options += `<option value="${index}">${food.name} (${food.serve})</option>`;
+            // Removed (${food.serve}) from label since it doesn't exist anymore
+            options += `<option value="${index}">${food.name}</option>`;
         });
         if (currentCat !== "") options += `</optgroup>`;
 
         tr.innerHTML = `
             <td class="text-left"><select onchange="calcRow(this)">${options}</select></td>
-            <td><input type="number" class="qty-input" placeholder="0" oninput="calcRow(this)"></td>
-            <td class="r-cal">0</td>
-            <td class="r-pro">0</td>
-            <td class="r-carb">0</td>
-            <td class="r-fat">0</td>
-            <td class="r-fib">0</td>
-            <td><button class="btn btn-del" onclick="removeRow(this)">X</button></td>
+            <td><input type="number" class="qty-input" placeholder="1" value="1" oninput="calcRow(this)"></td>
+            <td class="r-cal">0</td><td class="r-pro">0</td><td class="r-carb">0</td><td class="r-fat">0</td><td class="r-fib">0</td>
+            <td><button class="btn btn-del" onclick="removeRow(this)">x</button></td>
         `;
         tbody.appendChild(tr);
     }
 
-    function removeRow(btn) {
-        btn.closest('tr').remove();
-        calcTotals();
-    }
+    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
 
     function calcRow(el) {
         const tr = el.closest('tr');
@@ -224,14 +190,13 @@
 
         if (index !== "") {
             const food = foodDatabase[index];
-            const servingSize = parseFloat(food.serve) || 1; 
-            const ratio = qty / servingSize; 
-
-            tr.querySelector('.r-cal').innerText = Math.round(food.cal * ratio);
-            tr.querySelector('.r-pro').innerText = Math.round(food.pro * ratio);
-            tr.querySelector('.r-carb').innerText = Math.round(food.carb * ratio);
-            tr.querySelector('.r-fat').innerText = Math.round(food.fat * ratio);
-            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * ratio);
+            // NEW MATH: Simple Multiplication
+            // It assumes the sheet data is for "1 serving"
+            tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
+            tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
+            tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
+            tr.querySelector('.r-fat').innerText = Math.round(food.fat * qty);
+            tr.querySelector('.r-fib').innerText = Math.round(food.fiber * qty);
         }
         calcTotals();
     }
@@ -260,31 +225,20 @@
         document.getElementById('in-fib').value = document.getElementById('t-fib').innerText;
     }
 
-    // --- 3. SUBMIT LOGIC ---
-
-    const form = document.getElementById('macroForm');
-    const statusMsg = document.getElementById('status');
-
-    form.addEventListener('submit', e => {
+    // 3. SUBMIT
+    document.getElementById('macroForm').addEventListener('submit', e => {
       e.preventDefault();
-      statusMsg.innerText = "Saving...";
-      statusMsg.style.color = "blue";
+      const status = document.getElementById('status');
+      status.innerText = "Saving...";
       
-      fetch(scriptURL, { method: 'POST', body: new FormData(form)})
-        .then(response => {
-            statusMsg.innerText = "✅ Saved successfully!";
-            statusMsg.style.color = "green";
-            form.reset(); // Clear inputs
-            
-            // Wait 1 second then reload history so the new entry shows up
+      fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+        .then(() => {
+            status.innerText = "✅ Saved!";
+            e.target.reset();
             setTimeout(loadHistory, 1000);
         })
-        .catch(error => {
-            statusMsg.innerText = "❌ Error saving.";
-            statusMsg.style.color = "red";
-        });
+        .catch(() => status.innerText = "❌ Error.");
     });
   </script>
-
 </body>
 </html>
