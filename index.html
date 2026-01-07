@@ -44,8 +44,6 @@
     
     /* PROFILE GRID */
     .profile-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-    
-    /* Apple Watch Style Input */
     .input-burned { border-color: #fa114f; color: #fa114f; font-weight: bold; }
     .label-burned { color: #fa114f !important; font-weight: bold; }
   </style>
@@ -150,8 +148,8 @@
 
   <script>
     // --- SETTINGS ---
-    // UPDATED WITH YOUR NEW URL
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzb3-GgedpsijvXEAZ7KPGS29x8dTFjloGa0WYB_6Nqqk4YNn87lksaUoAC7K5H40e6fA/exec'; 
+    // Update this URL with your NEW deployment URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbz2XYFHR4RM6vOfSTVdYWI3flK-vGSltpJLaJZx0taiZR85fHfcIhcEqYouIiblz2VLdg/exec'; 
 
     let foodDatabase = [];
 
@@ -215,7 +213,6 @@
                 const fib = parseFloat(row[6]) || 0;
                 const burned = parseFloat(row[7]) || 0; 
 
-                // Calculate Net
                 const net = cal - burned;
                 let netClass = (net < 0) ? "stat-green" : ""; 
 
@@ -257,7 +254,7 @@
 
     // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
     function getChristineColor(metric, val) {
-       if (val === 0) return ""; 
+        if (val === 0) return ""; 
         if (metric === 'calories') return (val <= 1900) ? 'stat-green' : 'stat-red';
         if (metric === 'protein') return (val >= 180) ? 'stat-green' : 'stat-red';
         if (metric === 'carbs') return (val <= 150) ? 'stat-green' : 'stat-red';
@@ -267,11 +264,9 @@
             if (val <= 35) return 'stat-green';
             if (val <= 45) return 'stat-yellow';
             return 'stat-red';
-        }
-        return ""; 
     }
 
-    // --- 4. CALCULATOR & OTHER FUNCTIONS ---
+    // --- 4. CALCULATOR FUNCTIONS ---
     function addRow() {
         const tbody = document.getElementById('calcBody');
         const tr = document.createElement('tr');
@@ -285,7 +280,8 @@
                 currentCat = food.category;
                 options += `<optgroup label="${currentCat}">`;
             }
-            options += `<option value="${index}">${food.name}</option>`;
+            // THIS LINE CHANGED: Now displays "Rice (100g)" in the dropdown
+            options += `<option value="${index}">${food.name} (${food.serve})</option>`;
         });
         if (currentCat !== "") options += `</optgroup>`;
 
@@ -307,6 +303,8 @@
 
         if (index !== "") {
             const food = foodDatabase[index];
+            // MATH REMAINS SIMPLE: Qty * Sheet Value
+            // "1" quantity equals "1 serving size" (e.g. 100g)
             tr.querySelector('.r-cal').innerText = Math.round(food.cal * qty);
             tr.querySelector('.r-pro').innerText = Math.round(food.pro * qty);
             tr.querySelector('.r-carb').innerText = Math.round(food.carb * qty);
