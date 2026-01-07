@@ -257,6 +257,19 @@
 
     // --- 3. CUSTOM LOGIC FOR CHRISTINE ---
     function getChristineColor(metric, val) {
+       if (val === 0) return ""; 
+        if (metric === 'calories') return (val <= 1900) ? 'stat-green' : 'stat-red';
+        if (metric === 'protein') return (val >= 180) ? 'stat-green' : 'stat-red';
+        if (metric === 'carbs') return (val <= 150) ? 'stat-green' : 'stat-red';
+        if (metric === 'fat') return (val <= 60) ? 'stat-green' : 'stat-red';
+        if (metric === 'fiber') {
+            if (val < 25) return 'stat-red';
+            if (val <= 35) return 'stat-green';
+            if (val <= 45) return 'stat-yellow';
+            return 'stat-red';
+        }
+        return ""; 
+    }
     }
 
     // --- 4. CALCULATOR & OTHER FUNCTIONS ---
