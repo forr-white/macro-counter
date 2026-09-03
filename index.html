@@ -239,9 +239,9 @@
     // --- 2. CUSTOM LOGIC FOR FORREST ---
     function getForrestColor(metric, val) {
         if (val === 0) return ""; 
-        if (metric === 'calories') return (val <= 2400) ? 'stat-green' : 'stat-red';
-        if (metric === 'protein') return (val >= 225) ? 'stat-green' : 'stat-red';
-        if (metric === 'carbs') return (val <= 160) ? 'stat-green' : 'stat-red';
+        if (metric === 'calories') return (val <= 2500) ? 'stat-green' : 'stat-red';
+        if (metric === 'protein') return (val >= 180) ? 'stat-green' : 'stat-red';
+        if (metric === 'carbs') return (val <= 240) ? 'stat-green' : 'stat-red';
         if (metric === 'fat') return (val <= 85) ? 'stat-green' : 'stat-red';
         if (metric === 'fiber') {
             if (val < 30) return 'stat-red';
