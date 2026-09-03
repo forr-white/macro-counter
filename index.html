@@ -197,7 +197,7 @@
             data.forEach(row => {
                 let dateStr = ""; 
                 if (row[0]) {
-                    const d = new Date(row[0]);
+                    const d = new Date(row[8]);
                     if (!isNaN(d.getTime())) {
                         dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }
@@ -205,13 +205,13 @@
                 if (dateStr === "") return; 
 
                 // Parse Data
-                const weight = row[1] || "-"; 
-                const cal = parseFloat(row[2]) || 0;
-                const pro = parseFloat(row[3]) || 0;
-                const carb = parseFloat(row[4]) || 0;
-                const fat = parseFloat(row[5]) || 0;
-                const fib = parseFloat(row[6]) || 0;
-                const burned = parseFloat(row[7]) || 0; 
+                const weight = row[9] || "-"; 
+                const cal = parseFloat(row[10]) || 0;
+                const pro = parseFloat(row[11]) || 0;
+                const carb = parseFloat(row[12]) || 0;
+                const fat = parseFloat(row[13]) || 0;
+                const fib = parseFloat(row[14]) || 0;
+                const burned = parseFloat(row[15]) || 0; 
 
                 const net = cal - burned;
                 let netClass = (net < 0) ? "stat-green" : ""; 
