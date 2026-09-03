@@ -182,7 +182,7 @@
         });
     }
 
-    function loadHistory() {
+        function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
@@ -192,36 +192,78 @@
         .then(res => res.json())
         .then(data => {
             historyBody.innerHTML = ""; 
-            if (data.length === 0) { historyBody.innerHTML = '<tr><td colspan="9">No logs.</td></tr>'; return; }
+            if (!data || data.length === 0) { 
+                historyBody.innerHTML = '<tr><td colspan="9">No logs.</td></tr>'; 
+                return; 
+            }
+
+            const dailyAggregates = new Map();
 
             data.forEach(row => {
-                let dateStr = ""; 
-                if (row[0]) {
-                    const d = new Date(row[0]);
-                    if (!isNaN(d.getTime())) {
-                        dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    }
-                }
-                if (dateStr === "") return; 
+                if (!row[0]) return;
 
-                // Parse Data
-                const weight = row[1] || "-"; 
+                const d = new Date(row[0]);
+                if (isNaN(d.getTime())) return;
+
+                // Strip the timestamp by pulling local calendar year, month, and day
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const dateKey = `${year}-${month}-${day}`;
+                
+                // Formatted display label based on local date (e.g., "Sep 3")
+                const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                const rawWeight = parseFloat(row[1]);
                 const cal = parseFloat(row[2]) || 0;
                 const pro = parseFloat(row[3]) || 0;
                 const carb = parseFloat(row[4]) || 0;
                 const fat = parseFloat(row[5]) || 0;
                 const fib = parseFloat(row[6]) || 0;
-                const burned = parseFloat(row[7]) || 0; 
+                const burned = parseFloat(row[7]) || 0;
 
+                if (!dailyAggregates.has(dateKey)) {
+                    dailyAggregates.set(dateKey, {
+                        displayDate: displayDate,
+                        weight: (!isNaN(rawWeight) && rawWeight > 0) ? rawWeight : "-",
+                        cal: cal,
+                        pro: pro,
+                        carb: carb,
+                        fat: fat,
+                        fib: fib,
+                        burned: burned
+                    });
+                } else {
+                    const entry = dailyAggregates.get(dateKey);
+                    // Keep the latest weight if entered, otherwise preserve previous check-in
+                    if (!isNaN(rawWeight) && rawWeight > 0) entry.weight = rawWeight;
+                    // Sum the macros & burn
+                    entry.cal += cal;
+                    entry.pro += pro;
+                    entry.carb += carb;
+                    entry.fat += fat;
+                    entry.fib += fib;
+                    entry.burned += burned;
+                }
+            });
+
+            // Render merged rows
+            dailyAggregates.forEach(day => {
+                const cal = Math.round(day.cal);
+                const pro = Math.round(day.pro);
+                const carb = Math.round(day.carb);
+                const fat = Math.round(day.fat);
+                const fib = Math.round(day.fib);
+                const burned = Math.round(day.burned);
                 const net = cal - burned;
-                let netClass = (net < 0) ? "stat-green" : ""; 
 
+                let netClass = (net < 0) ? "stat-green" : ""; 
                 let colorFunc = (user === "Forrest") ? getForrestColor : getChristineColor;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${dateStr}</td>
-                    <td>${weight}</td>
+                    <td>${day.displayDate}</td>
+                    <td>${day.weight}</td>
                     <td class="${colorFunc('calories', cal)}">${cal}</td>
                     <td>${burned}</td>
                     <td class="${netClass}">${net}</td>
@@ -235,6 +277,7 @@
             document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
         });
     }
+
 
     // --- 2. CUSTOM LOGIC FOR FORREST ---
     function getForrestColor(metric, val) {
