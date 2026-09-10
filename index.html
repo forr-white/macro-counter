@@ -149,7 +149,7 @@
 
   <script>
     // --- SETTINGS ---
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbyPejpmwnHi79NbVgBHWF1ywumpX1b_2xMMSeRItDLBnJ3EPXhq89C93LgMLUyWp2JXtw/exec'; 
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzng662YxrCJQnhq_qSUB6yTRFgzRfas7aKYhHGEhpbi-ihUHVGAbXsrhKnHTze6REA0w/exec'; 
 
     let foodDatabase = [];
 
@@ -182,7 +182,7 @@
         });
     }
 
-            function loadHistory() {
+                function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
@@ -191,12 +191,10 @@
         return fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
-            // If Apps Script caught an error and returned { error: "..." }
             if (data && data.error) {
-                throw new Error("Apps Script Error: " + data.error);
+                throw new Error(data.error);
             }
 
-            console.log("Total rows from sheet:", Array.isArray(data) ? data.length : 0);
             historyBody.innerHTML = ""; 
             
             if (!Array.isArray(data) || data.length === 0) { 
@@ -205,13 +203,14 @@
             }
 
             data.forEach((row) => {
-                if (!row || !row[0]) return;
+                if (!row || !Array.isArray(row) || !row[0]) return;
                 
                 const rawVal = row[0];
                 if (typeof rawVal === 'string' && rawVal.toLowerCase().includes('date')) return;
 
                 let displayDate = "";
 
+                // Handle Google Sheet numeric serial timestamps
                 if (typeof rawVal === 'number') {
                     const sheetEpoch = new Date(1899, 11, 30);
                     const parsed = new Date(sheetEpoch.getTime() + rawVal * 86400000);
@@ -249,14 +248,20 @@
                     <td class="${colorFunc('fat', fat)}">${fat}</td>
                     <td class="${colorFunc('fiber', fib)}">${fib}</td>
                 `;
-                historyBody.appendChild(tr);
+                // Shows the most recent entry at the top
+                historyBody.prepend(tr);
             });
+
+            if (historyBody.children.length === 0) {
+                historyBody.innerHTML = '<tr><td colspan="9">No valid entries found.</td></tr>';
+            }
         })
         .catch(err => {
-            console.error("Full history error:", err);
-            historyBody.innerHTML = `<tr><td colspan="9" style="color:red; padding: 10px;">${err.message}</td></tr>`;
+            console.error("History fetch error:", err);
+            historyBody.innerHTML = `<tr><td colspan="9" style="color:red; font-weight: bold; padding: 10px;">${err.message}</td></tr>`;
         });
     }
+
 
 
 
