@@ -182,7 +182,7 @@
         });
     }
 
-            function loadHistory() {
+    function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
@@ -192,6 +192,9 @@
         .then(res => res.json())
         .then(data => {
             console.log("Total rows from sheet:", data.length);
+            console.log("First 3 rows sample:", data.slice(0, 3));
+            console.log("Last 3 rows sample:", data.slice(-3));
+            
             historyBody.innerHTML = ""; 
             
             if (!Array.isArray(data) || data.length === 0) { 
@@ -201,37 +204,51 @@
 
             const dailyAggregates = new Map();
 
-            data.forEach(row => {
+            data.forEach((row, idx) => {
                 if (!row || !row[0]) return;
-                if (typeof row[0] === 'string' && row[0].toLowerCase().includes('date')) return;
+                
+                // Skip header strings
+                const rawVal = row[0];
+                if (typeof rawVal === 'string' && rawVal.toLowerCase().includes('date')) return;
 
                 let year, month, day;
-                
-                if (typeof row[0] === 'string' && (row[0].includes('/') || row[0].includes('-'))) {
-                    const parts = row[0].split(/[ T]/)[0].split(/[\/\-]/);
-                    if (parts.length === 3) {
-                        if (parts[0].length === 4) {
-                            year = parts[0];
-                            month = parts[1].padStart(2, '0');
-                            day = parts[2].padStart(2, '0');
-                        } else {
-                            month = parts[0].padStart(2, '0');
-                            day = parts[1].padStart(2, '0');
-                            year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+
+                // Case A: Google serial number date (e.g., 45500)
+                if (typeof rawVal === 'number') {
+                    const sheetEpoch = new Date(1899, 11, 30);
+                    const parsed = new Date(sheetEpoch.getTime() + rawVal * 86400000);
+                    year = parsed.getFullYear();
+                    month = String(parsed.getMonth() + 1).padStart(2, '0');
+                    day = String(parsed.getDate()).padStart(2, '0');
+                }
+                // Case B: Standard Date string or ISO
+                else {
+                    const d = new Date(rawVal);
+                    if (!isNaN(d.getTime())) {
+                        year = d.getFullYear();
+                        month = String(d.getMonth() + 1).padStart(2, '0');
+                        day = String(d.getDate()).padStart(2, '0');
+                    } else if (typeof rawVal === 'string') {
+                        // Fallback manual regex match
+                        const m = rawVal.match(/(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})/);
+                        if (m) {
+                            if (m[1].length === 4) {
+                                year = m[1]; month = m[2].padStart(2, '0'); day = m[3].padStart(2, '0');
+                            } else {
+                                month = m[1].padStart(2, '0'); day = m[2].padStart(2, '0'); 
+                                year = m[3].length === 2 ? `20${m[3]}` : m[3];
+                            }
                         }
                     }
                 }
 
                 if (!year || !month || !day) {
-                    const parsed = new Date(row[0]);
-                    if (isNaN(parsed.getTime())) return;
-                    year = parsed.getFullYear();
-                    month = String(parsed.getMonth() + 1).padStart(2, '0');
-                    day = String(parsed.getDate()).padStart(2, '0');
+                    console.warn(`Row ${idx} skipped - unrecognized date format:`, rawVal);
+                    return;
                 }
 
                 const dateKey = `${year}-${month}-${day}`;
-                const localDateObj = new Date(year, parseInt(month, 10) - 1, parseInt(day, 10));
+                const localDateObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
                 const displayDate = localDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
                 const rawWeight = parseFloat(row[1]);
@@ -271,8 +288,7 @@
                 return;
             }
 
-            // Convert map to array and sort (b.dateKey.localeCompare(a.dateKey) puts most recent at the top)
-            // If you prefer oldest at the top, switch to: a.dateKey.localeCompare(b.dateKey)
+            // Sort newest date first
             const sortedDays = Array.from(dailyAggregates.values()).sort((a, b) => 
                 b.dateKey.localeCompare(a.dateKey)
             );
@@ -309,6 +325,7 @@
             historyBody.innerHTML = '<tr><td colspan="9" style="color:red;">Error loading logs.</td></tr>';
         });
     }
+
 
 
 
