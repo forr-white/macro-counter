@@ -149,7 +149,7 @@
 
   <script>
     // --- SETTINGS ---
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxgGuyUuKgD1G5yDZg4qADRufSQqn6yvowkb24v5SzcN85gyUc46RRVwQs82VdfZDwwUg/exec'; 
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbyPejpmwnHi79NbVgBHWF1ywumpX1b_2xMMSeRItDLBnJ3EPXhq89C93LgMLUyWp2JXtw/exec'; 
 
     let foodDatabase = [];
 
@@ -182,7 +182,7 @@
         });
     }
 
-        function loadHistory() {
+            function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
@@ -191,7 +191,12 @@
         return fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
-            console.log("Total rows from sheet:", data.length);
+            // If Apps Script caught an error and returned { error: "..." }
+            if (data && data.error) {
+                throw new Error("Apps Script Error: " + data.error);
+            }
+
+            console.log("Total rows from sheet:", Array.isArray(data) ? data.length : 0);
             historyBody.innerHTML = ""; 
             
             if (!Array.isArray(data) || data.length === 0) { 
@@ -199,17 +204,14 @@
                 return; 
             }
 
-            // Loop every single row without grouping
-            data.forEach((row, idx) => {
+            data.forEach((row) => {
                 if (!row || !row[0]) return;
                 
-                // Skip header string if row 1 happens to be a title
                 const rawVal = row[0];
                 if (typeof rawVal === 'string' && rawVal.toLowerCase().includes('date')) return;
 
                 let displayDate = "";
 
-                // Google serial number date (e.g. 45500)
                 if (typeof rawVal === 'number') {
                     const sheetEpoch = new Date(1899, 11, 30);
                     const parsed = new Date(sheetEpoch.getTime() + rawVal * 86400000);
@@ -219,12 +221,11 @@
                     if (!isNaN(d.getTime())) {
                         displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     } else {
-                        // Fallback: render the text directly so nothing is hidden
                         displayDate = String(rawVal).split('T')[0];
                     }
                 }
 
-                const rawWeight = row[1] !== "" && row[1] !== null && !isNaN(parseFloat(row[1])) ? parseFloat(row[1]) : "-";
+                const rawWeight = (row[1] !== "" && row[1] !== null && !isNaN(parseFloat(row[1]))) ? parseFloat(row[1]) : "-";
                 const cal = Math.round(parseFloat(row[2]) || 0);
                 const pro = Math.round(parseFloat(row[3]) || 0);
                 const carb = Math.round(parseFloat(row[4]) || 0);
@@ -248,15 +249,15 @@
                     <td class="${colorFunc('fat', fat)}">${fat}</td>
                     <td class="${colorFunc('fiber', fib)}">${fib}</td>
                 `;
-                // Inserts newest at top; change to appendChild(tr) if you want oldest at top
-                historyBody.prepend(tr);
+                historyBody.appendChild(tr);
             });
         })
         .catch(err => {
-            console.error("Error loading data:", err);
-            historyBody.innerHTML = '<tr><td colspan="9" style="color:red;">Error loading logs.</td></tr>';
+            console.error("Full history error:", err);
+            historyBody.innerHTML = `<tr><td colspan="9" style="color:red; padding: 10px;">${err.message}</td></tr>`;
         });
     }
+
 
 
 
