@@ -182,7 +182,7 @@
         });
     }
 
-        function loadHistory() {
+            function loadHistory() {
         const user = document.getElementById('userSelect').value;
         const historyBody = document.getElementById('historyBody');
 
@@ -191,8 +191,10 @@
         return fetch(`${scriptURL}?action=getHistory&user=${user}`)
         .then(res => res.json())
         .then(data => {
+            console.log("Total rows from sheet:", data.length);
             historyBody.innerHTML = ""; 
-            if (!data || data.length === 0) { 
+            
+            if (!Array.isArray(data) || data.length === 0) { 
                 historyBody.innerHTML = '<tr><td colspan="9">No logs.</td></tr>'; 
                 return; 
             }
@@ -200,19 +202,37 @@
             const dailyAggregates = new Map();
 
             data.forEach(row => {
-                if (!row[0]) return;
+                if (!row || !row[0]) return;
+                if (typeof row[0] === 'string' && row[0].toLowerCase().includes('date')) return;
 
-                const d = new Date(row[0]);
-                if (isNaN(d.getTime())) return;
-
-                // Strip the timestamp by pulling local calendar year, month, and day
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                const dateKey = `${year}-${month}-${day}`;
+                let year, month, day;
                 
-                // Formatted display label based on local date (e.g., "Sep 3")
-                const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (typeof row[0] === 'string' && (row[0].includes('/') || row[0].includes('-'))) {
+                    const parts = row[0].split(/[ T]/)[0].split(/[\/\-]/);
+                    if (parts.length === 3) {
+                        if (parts[0].length === 4) {
+                            year = parts[0];
+                            month = parts[1].padStart(2, '0');
+                            day = parts[2].padStart(2, '0');
+                        } else {
+                            month = parts[0].padStart(2, '0');
+                            day = parts[1].padStart(2, '0');
+                            year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                        }
+                    }
+                }
+
+                if (!year || !month || !day) {
+                    const parsed = new Date(row[0]);
+                    if (isNaN(parsed.getTime())) return;
+                    year = parsed.getFullYear();
+                    month = String(parsed.getMonth() + 1).padStart(2, '0');
+                    day = String(parsed.getDate()).padStart(2, '0');
+                }
+
+                const dateKey = `${year}-${month}-${day}`;
+                const localDateObj = new Date(year, parseInt(month, 10) - 1, parseInt(day, 10));
+                const displayDate = localDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
                 const rawWeight = parseFloat(row[1]);
                 const cal = parseFloat(row[2]) || 0;
@@ -224,6 +244,7 @@
 
                 if (!dailyAggregates.has(dateKey)) {
                     dailyAggregates.set(dateKey, {
+                        dateKey: dateKey,
                         displayDate: displayDate,
                         weight: (!isNaN(rawWeight) && rawWeight > 0) ? rawWeight : "-",
                         cal: cal,
@@ -235,9 +256,7 @@
                     });
                 } else {
                     const entry = dailyAggregates.get(dateKey);
-                    // Keep the latest weight if entered, otherwise preserve previous check-in
                     if (!isNaN(rawWeight) && rawWeight > 0) entry.weight = rawWeight;
-                    // Sum the macros & burn
                     entry.cal += cal;
                     entry.pro += pro;
                     entry.carb += carb;
@@ -247,8 +266,18 @@
                 }
             });
 
-            // Render merged rows
-            dailyAggregates.forEach(day => {
+            if (dailyAggregates.size === 0) {
+                historyBody.innerHTML = '<tr><td colspan="9">No logs found.</td></tr>';
+                return;
+            }
+
+            // Convert map to array and sort (b.dateKey.localeCompare(a.dateKey) puts most recent at the top)
+            // If you prefer oldest at the top, switch to: a.dateKey.localeCompare(b.dateKey)
+            const sortedDays = Array.from(dailyAggregates.values()).sort((a, b) => 
+                b.dateKey.localeCompare(a.dateKey)
+            );
+
+            sortedDays.forEach(day => {
                 const cal = Math.round(day.cal);
                 const pro = Math.round(day.pro);
                 const carb = Math.round(day.carb);
@@ -274,9 +303,13 @@
                 `;
                 historyBody.appendChild(tr);
             });
-            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        })
+        .catch(err => {
+            console.error("Error loading data:", err);
+            historyBody.innerHTML = '<tr><td colspan="9" style="color:red;">Error loading logs.</td></tr>';
         });
     }
+
 
 
     // --- 2. CUSTOM LOGIC FOR FORREST ---
