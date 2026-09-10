@@ -212,31 +212,43 @@
 
                 let year, month, day, displayDate;
 
-                // Handle Google Sheet numeric serial timestamps
-                if (typeof rawVal === 'number') {
-                    const sheetEpoch = new Date(1899, 11, 30);
-                    const parsed = new Date(sheetEpoch.getTime() + rawVal * 86400000);
-                    year = parsed.getFullYear();
-                    month = String(parsed.getMonth() + 1).padStart(2, '0');
-                    day = String(parsed.getDate()).padStart(2, '0');
-                    displayDate = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                } else {
-                    const d = new Date(rawVal);
-                    if (!isNaN(d.getTime())) {
-                        year = d.getFullYear();
-                        month = String(d.getMonth() + 1).padStart(2, '0');
-                        day = String(d.getDate()).padStart(2, '0');
-                        displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    } else if (typeof rawVal === 'string') {
-                        // Direct string fallback (e.g., YYYY-MM-DD)
-                        const cleaned = rawVal.split('T')[0].trim();
-                        displayDate = cleaned;
-                        dateKey = cleaned;
+                // 1. Matches "9/5/2026 9:13:35" or "09/05/2026"
+                if (typeof rawVal === 'string') {
+                    const match = rawVal.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                    if (match) {
+                        month = match[1].padStart(2, '0');
+                        day = match[2].padStart(2, '0');
+                        year = match[3];
+
+                        // Convert to display label (e.g., "Sep 5")
+                        const dObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+                        displayDate = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }
                 }
 
-                const dateKey = (year && month && day) ? `${year}-${month}-${day}` : displayDate;
-                if (!dateKey) return;
+                // 2. Fallback for Google serial numbers or standard Date objects
+                if (!year || !month || !day) {
+                    let d;
+                    if (typeof rawVal === 'number') {
+                        const epoch = new Date(1899, 11, 30);
+                        d = new Date(epoch.getTime() + rawVal * 86400000);
+                    } else {
+                        d = new Date(rawVal);
+                    }
+
+                    if (!isNaN(d.getTime())) {
+                        year = String(d.getFullYear());
+                        month = String(d.getMonth() + 1).padStart(2, '0');
+                        day = String(d.getDate()).padStart(2, '0');
+                        displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                }
+
+                // If no date could be parsed, safely skip
+                if (!year || !month || !day) return;
+
+                // Common key: "2026-09-05" - strips the time completely so everything on that day merges
+                const dateKey = `${year}-${month}-${day}`;
 
                 const rawWeight = (row[1] !== "" && row[1] !== null && !isNaN(parseFloat(row[1]))) ? parseFloat(row[1]) : null;
                 const cal = parseFloat(row[2]) || 0;
@@ -260,11 +272,11 @@
                     });
                 } else {
                     const entry = dailyAggregates.get(dateKey);
-                    // Update weight if a valid one was recorded in a later entry of that day
+                    // Retain latest valid weight for the day
                     if (rawWeight !== null && rawWeight > 0) {
                         entry.weight = rawWeight;
                     }
-                    // Sum macros and calories
+                    // Sum macros and energy
                     entry.cal += cal;
                     entry.pro += pro;
                     entry.carb += carb;
@@ -279,7 +291,7 @@
                 return;
             }
 
-            // Convert to array and sort so newest days are at the top
+            // Sort newest date first
             const sortedDays = Array.from(dailyAggregates.values()).sort((a, b) => 
                 b.dateKey.localeCompare(a.dateKey)
             );
@@ -316,12 +328,6 @@
             historyBody.innerHTML = `<tr><td colspan="9" style="color:red; font-weight: bold; padding: 10px;">${err.message}</td></tr>`;
         });
     }
-
-
-
-
-
-
 
 
     // --- 2. CUSTOM LOGIC FOR FORREST ---
